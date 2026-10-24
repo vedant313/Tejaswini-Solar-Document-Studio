@@ -94,7 +94,7 @@ export const generateWCR = async (data: FormData, download = false) => {
       [
         "9",
         "No. of Separate Earthings with Earth Resistance",
-        data.earthingCount,
+        "3",
       ],
       [
         "",
