@@ -331,7 +331,7 @@ export default function App() {
         inverterModel: clean(form.inverterModel),
         inverterRating: clean(form.inverterCapacity),
         chargeControllerType: "",
-        earthingCount: "",
+        earthingCount: "3",
         lightningArrester: "",
         manufacturingYear: "",
         aadharNumber: "",
