@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { generateWCR } from "./lib/generate-wcr.ts";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url).toString();
 
@@ -110,21 +111,53 @@ export default function WorkCompletionPage({onBack}) {
     if (!form.consumerName.trim()) { setStatus("Please enter the customer name before generating."); return; }
     try {
       setStatus("Generating Work Completion Report PDF…");
-      const data = {
-        consumerName:clean(form.consumerName), consumerNumber:clean(form.consumerNumber),
-        mobileNumber:clean(form.customerMobile), address:clean(form.address),
-        installedCapacityRooftop:clean(form.systemCapacity || "3"), installedCapacityTotal:clean(form.systemCapacity || "3"),
-        systemCapacity:clean(form.systemCapacity || "3"), installationDate:clean(form.installationDate),
-        installerName:clean(form.vendorName), companyName:clean(form.vendorName), vendorName:clean(form.vendorName),
-        installerPhone:clean(form.vendorMobile), companyPhone:clean(form.vendorMobile), email:clean(form.vendorEmail),
-        district:"Dhule", sanctionedCapacity:clean(form.systemCapacity || "3"), proposedCapacity:clean(form.systemCapacity || "3"),
-        bankName:clean(form.bankName), bankBranch:clean(form.bankBranch), bankIFSC:clean(form.bankIFSC), bankAddress:clean(form.bankAddress),
-        sanctionNumber:clean(form.sanctionNumber), loanAmount:clean(form.loanAmount), applicationDate:clean(form.sanctionDate),
-        moduleManufacturer:"Waaree", moduleWattage:"615", inverterMake:"PV Blink", inverterCapacity:clean(form.systemCapacity || "3"),
-        numberOfModules:"", inverterModel:""
-      };
-      await generateWCR(data, true);
-      setStatus("Work Completion Report PDF generated. Review the downloaded PDF before submitting it to the bank.");
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 18;
+      const vendorName = clean(form.vendorName || "TEJASWINI SALES");
+      const customer = clean(form.consumerName);
+      const bankName = clean(form.bankName || "BANK OF BARODA");
+      const branch = clean(form.bankBranch || "DHULIA");
+      const capacity = clean(form.systemCapacity || "3");
+      doc.setProperties({title:"Work Completion Report - " + customer, author:vendorName, subject:"Solar Rooftop Work Completion Report"});
+      doc.setFont("helvetica","bold"); doc.setFontSize(15);
+      doc.text(vendorName, pageWidth/2, 18, {align:"center"});
+      doc.setFont("helvetica","normal"); doc.setFontSize(9);
+      doc.text("Location: " + clean(form.vendorAddress), pageWidth/2, 25, {align:"center", maxWidth:pageWidth-2*margin});
+      doc.text("Mobile No: " + clean(form.vendorMobile) + (form.vendorEmail ? "   |   " + clean(form.vendorEmail) : ""), pageWidth/2, 31, {align:"center", maxWidth:pageWidth-2*margin});
+      doc.setFontSize(10);
+      doc.text("Date: " + (form.reportDate || new Date().toLocaleDateString("en-IN")), pageWidth-margin, 42, {align:"right"});
+      doc.text("To,", margin, 53);
+      doc.setFont("helvetica","bold"); doc.text(bankName + ",", margin, 59); doc.text(branch + ",", margin, 65);
+      doc.setFont("helvetica","normal"); doc.text(clean(form.bankAddress || "Dhule"), margin, 71);
+      doc.setFont("helvetica","bold"); doc.text("Sub: Submission of Work Completion Report and Hypothecation of Solar Rooftop System", margin, 83, {maxWidth:pageWidth-2*margin});
+      doc.setFont("helvetica","normal"); doc.text("Respected Sir/Madam,", margin, 94);
+      const body = "With reference to the above subject, I hereby confirm that we have successfully completed the installation work of a " + capacity + " KW rooftop solar system at the residence of " + customer + (form.address ? ", at " + clean(form.address) : "") + ", as per the guidelines of DISCOM under the net metering arrangement.";
+      const bodyLines = doc.splitTextToSize(body, pageWidth-2*margin);
+      doc.text(bodyLines, margin, 102);
+      const y2 = 102 + bodyLines.length*5 + 4;
+      const hyp = "In accordance with the loan arrangement, I hereby hypothecate the installed " + capacity + " KW solar rooftop system to " + bankName + ", " + branch + " as security for the loan sanctioned to " + customer + " for this installation.";
+      const hypLines = doc.splitTextToSize(hyp, pageWidth-2*margin);
+      doc.text(hypLines, margin, y2);
+      const y3 = y2 + hypLines.length*5 + 4;
+      doc.text("We kindly request you to release the pending payment at the earliest.", margin, y3);
+      const rows = [
+        ["Consumer Name", customer], ["Consumer Number", clean(form.consumerNumber)],
+        ["Customer Mobile", clean(form.customerMobile)], ["System Capacity", capacity + " KW"],
+        ["Installation Address", clean(form.address)]
+      ];
+      if (form.sanctionNumber) rows.push(["Digital Sanction / Application No.", clean(form.sanctionNumber)]);
+      if (form.sanctionDate) rows.push(["Sanction Date", clean(form.sanctionDate)]);
+      if (form.loanAmount) rows.push(["Sanctioned Loan Amount", "Rs. " + clean(form.loanAmount)]);
+      if (form.bankIFSC) rows.push(["Bank IFSC Code", clean(form.bankIFSC)]);
+      autoTable(doc, {startY:y3+8, head:[["Detail","Information"]], body:rows, theme:"grid", margin:{left:margin,right:margin}, styles:{fontSize:9,cellPadding:2.5,overflow:"linebreak"}, headStyles:{fillColor:[235,235,235],textColor:[20,20,20]}, columnStyles:{0:{cellWidth:55},1:{cellWidth:pageWidth-2*margin-55}}});
+      const sy = Math.min((doc.lastAutoTable?.finalY || y3+55)+13, 258);
+      doc.text("Yours Sincerely,", margin, sy);
+      doc.text("(Signature and Stamp)", margin, sy+24);
+      doc.setFont("helvetica","bold"); doc.text("Authorized Representative", margin, sy+30);
+      doc.setFont("helvetica","normal"); doc.text(vendorName, margin, sy+36);
+      doc.save("Work-Completion-Report.pdf");
+      setStatus("Work Completion Report PDF generated. Verify customer, bank and sanction details before signing or submitting.");
     } catch(e) { console.error(e); setStatus("PDF generation failed: " + (e?.message || String(e))); }
   };
   const inputStyle = {width:"100%",boxSizing:"border-box",padding:"11px 12px",border:"1px solid #d1d5db",borderRadius:8,font:"inherit",background:"#fff",color:"#111827"};
