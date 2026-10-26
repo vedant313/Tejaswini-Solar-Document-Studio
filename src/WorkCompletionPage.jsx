@@ -11,10 +11,10 @@ const DEFAULT_VENDOR = {
   vendorMobile: "9168445719",
   vendorEmail: "tejaswinisolarenergy@gmail.com",
   systemCapacity: "3",
-  bankName: "BANK OF BARODA",
-  bankBranch: "DHULIA",
+  bankName: "",
+  bankBranch: "",
   bankIFSC: "",
-  bankAddress: "Dhule",
+  bankAddress: "",
 };
 const fresh = () => {
   let saved = {};
