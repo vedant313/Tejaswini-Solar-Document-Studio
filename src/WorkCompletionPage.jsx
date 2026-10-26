@@ -118,7 +118,7 @@ export default function WorkCompletionPage({onBack}) {
       const margin = 18;
       const vendorName = clean(form.vendorName || "TEJASWINI SALES");
       const vendorAddress = clean(form.vendorAddress);
-      const vendorPhone = String(form.vendorMobile || "").replace(/\\D/g, "").slice(-10);
+      const vendorPhone = String(form.vendorMobile || "").replace(/\D/g, "").slice(-10);
       const customer = clean(form.consumerName);
       const bankName = clean(form.bankName).replace(/BARORA/gi, "BARODA");
       const branch = clean(form.bankBranch);
