@@ -11,10 +11,10 @@ const DEFAULT_VENDOR = {
   vendorMobile: "9168445719",
   vendorEmail: "tejaswinisolarenergy@gmail.com",
   systemCapacity: "3",
-  bankName: "",
-  bankBranch: "",
+  bankName: "BANK OF BARODA",
+  bankBranch: "DHULIA",
   bankIFSC: "",
-  bankAddress: "",
+  bankAddress: "Dhule",
 };
 const fresh = () => {
   let saved = {};
@@ -77,10 +77,9 @@ async function readPdf(file) {
   return out.join("\n");
 }
 const fields = [
-  ["consumerName","Customer name"],["consumerNumber","Consumer / CA number"],["customerMobile","Customer mobile"],["address","Installation address"],
-  ["systemCapacity","System capacity (kW)"],["installationDate","Installation date"],["sanctionNumber","Sanction application number"],["sanctionDate","Sanction date"],["loanAmount","Loan amount (₹)"],
-  ["bankName","Bank name"],["bankBranch","Bank branch"],["bankIFSC","Bank IFSC"],["bankAddress","Bank branch address"],
-  ["vendorName","Vendor name"],["vendorAddress","Vendor address"],["vendorMobile","Vendor mobile"],["vendorEmail","Vendor email"]
+  ["consumerName","Consumer Name"],["customerMobile","Mobile Number"],["systemCapacity","System Capacity (KW)"],
+  ["bankName","Bank Name"],["bankBranch","Bank Branch"],["bankAddress","Bank Location"],
+  ["vendorName","Installer Name"],["vendorMobile","Installer Contact *"],["address","Installation Address *"],["vendorAddress","Installer Address *"]
 ];
 export default function WorkCompletionPage({onBack}) {
   const [form,setForm] = useState(fresh);
