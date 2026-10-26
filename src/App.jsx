@@ -20,7 +20,7 @@ const emails = ["tejaswinisolarenergy@gmail.com", "tejaswinisolarpune@gmail.com"
 const initial = {
   consumerName:"", consumerNumber:"", customerMobile:"", address:"", pincode:"",
   sanctionedCapacity:"", proposedCapacity:"", existingCapacity:"", district:"Dhule",
-  applicationDate:"", totalCost:"", moduleManufacturer:"Waaree", moduleWattage:"615",
+  applicationDate:"", totalCost:"", moduleManufacturer:"Waaree", moduleWattage:"",
   numberOfModules:"", moduleModelNumber:"", inverterMake:"PV Blink", inverterModel:"", inverterCapacity:"",
   installationDate:todayISO(), installerName:"Tejaswini Sales", companyName:"TEJASWINI SALES",
   vendorName:"TEJASWINI SALES", email:emails[0], installerPhone:"9765312906",
@@ -273,11 +273,23 @@ export default function App() {
     if (phones.some(p=>p.number===n)) { setStatus("That mobile number is already listed."); return; }
     const next = [...phones,{label:"Custom",number:n}]; setPhones(next); setSelectedPhone(n); update("installerPhone",n); setCustomPhone(""); setStatus("Mobile number added.");
   };
+  const hasValidPanelWattage = () => {
+    const value = form.moduleWattage === "other" ? form.customWattage : form.moduleWattage;
+    return Number(value) > 0;
+  };
+  const requirePanelWattage = () => {
+    if (hasValidPanelWattage()) return true;
+    setStatus("Please select Panel Wattage (Wp) before continuing or downloading.");
+    window.alert("Please select Panel Wattage (Wp) before continuing or downloading.");
+    return false;
+  };
   const saveFields = () => {
+    if (!requirePanelWattage()) return;
     const blob = new Blob([JSON.stringify({...form, selectedCompanyMobile:selectedPhone},null,2)],{type:"application/json"});
     const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="solar-customer-data.json"; a.click(); URL.revokeObjectURL(url);
   };
   const generatePdf = async (kind) => {
+    if (!requirePanelWattage()) return;
     try {
       setStatus(`Generating ${kind} PDF...`);
       const clean = value => String(value ?? "").trim();
@@ -424,7 +436,7 @@ export default function App() {
       <div className="grid two">
         <Labeled label="Panel manufacturer"><select value={form.moduleManufacturer} onChange={e=>update("moduleManufacturer",e.target.value)}><option>Waaree</option><option>Mundra Solar</option><option>Tata Power Solar</option><option>Other</option></select></Labeled>
         {form.moduleManufacturer==="Other" && <Labeled label="Custom panel brand">{input("customModuleManufacturer","Enter panel brand")}</Labeled>}
-        <Labeled label="Panel wattage (Wp)"><select value={form.moduleWattage} onChange={e=>update("moduleWattage",e.target.value)}>{[540,545,550,555,575,585,610,615].map(w=><option key={w} value={String(w)}>{w} W</option>)}<option value="other">Other — enter below</option></select></Labeled>
+        <Labeled label="Panel wattage (Wp)"><select required value={form.moduleWattage} onChange={e=>update("moduleWattage",e.target.value)}><option value="">Select panel wattage</option>{[540,545,550,555,575,585,610,615].map(w=><option key={w} value={String(w)}>{w} W</option>)}<option value="other">Other — enter below</option></select></Labeled>
         {form.moduleWattage==="other" && <Labeled label="Custom wattage (Wp)">{input("customWattage","e.g. 600","number")}</Labeled>}
         <Labeled label="Number of panels">{input("numberOfModules","e.g. 7","number")}</Labeled>
         <Labeled label="ALMM Model Number">{input("moduleModelNumber","Model number")}</Labeled>
