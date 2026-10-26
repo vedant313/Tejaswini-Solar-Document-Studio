@@ -9,3 +9,17 @@
 .downloadLink{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid #b18a40;background:#d5a64b;color:#18160f;border-radius:5px;padding:10px 14px;font-size:12px;font-weight:750}
 .downloadLink:hover{background:#e1b95e}
 @media(max-width:600px){.pdfModalBackdrop{padding:0}.pdfModal{width:100%;height:100%;border-radius:0}.pdfModalHead{padding:14px;align-items:flex-start}.pdfModalHead h2{font-size:16px}.pdfModalActions{padding:12px;flex-wrap:wrap}.pdfModalActions>*{flex:1;text-align:center}}
+
+
+/* Nexsa Technologies product UI refinement */
+.top{gap:16px}.brandCredit{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:7px}.brandCredit .pill{margin-left:0}.builtBy{font-size:9px;letter-spacing:1.15px;color:#8f9087;white-space:nowrap}.builtBy strong{color:#d8b567;font-weight:750}
+.top>.secondary{white-space:nowrap}.intro{box-shadow:0 8px 24px #00000012}.introMeta span{font-variant-numeric:tabular-nums}
+.card{box-shadow:0 4px 18px #0000000b;transition:border-color .18s ease}.card:hover{border-color:#48483e}
+.sectionHead h2{letter-spacing:-.25px}.field{line-height:1.4}.field input,.field select,.field textarea{transition:border-color .15s ease,background .15s ease}.field input:hover,.field select:hover,.field textarea:hover{border-color:#5b5c50}
+.notice{border-left:3px solid var(--accent);line-height:1.55}
+.docGrid{align-items:stretch}.doc{position:relative;min-height:190px;transition:transform .16s ease,border-color .16s ease,background .16s ease}.doc:hover{transform:translateY(-2px);border-color:#76613a;background:#171711}.doc h3{line-height:1.4}.doc p{flex:1}.doc button{min-height:39px;letter-spacing:.1px}
+.bottomActions{align-items:center}.bottomActions button{min-height:38px}
+footer{align-items:flex-end}.footerBrand{display:flex;flex-direction:column;gap:5px}.footerBrand span{font-size:10px;color:#85867e}.footerCredit{font-size:10px;line-height:1.8;color:#85867e;text-align:right}.footerCredit strong{font-size:10px;color:#d0ad62;letter-spacing:1px}
+.pdfModalHead .eyebrow{letter-spacing:1.5px}.pdfModalHead h2{letter-spacing:-.3px}.downloadLink{transition:background .15s ease,transform .15s ease}.downloadLink:hover{transform:translateY(-1px)}
+@media(max-width:760px){.brandCredit{margin-left:56px;align-items:flex-start;flex-direction:row;flex-wrap:wrap}.brandCredit .pill{display:none}.builtBy{padding-top:8px}.top>.secondary{margin-left:0}.footerCredit{text-align:left}.doc{min-height:0}}
+@media(prefers-reduced-motion:reduce){.card,.doc,.downloadLink,.field input,.field select,.field textarea{transition:none!important}}
