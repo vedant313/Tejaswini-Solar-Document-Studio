@@ -113,53 +113,68 @@ export default function WorkCompletionPage({onBack}) {
     if (!form.consumerName.trim()) { setStatus("Please enter the customer name before generating."); return; }
     try {
       setStatus("Generating Work Completion Report PDF…");
-      const doc = new jsPDF();
+      const doc = new jsPDF({unit:"mm", format:"a4"});
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 18;
       const vendorName = clean(form.vendorName || "TEJASWINI SALES");
+      const vendorAddress = clean(form.vendorAddress);
+      const vendorPhone = String(form.vendorMobile || "").replace(/\\D/g, "").slice(-10);
       const customer = clean(form.consumerName);
       const bankName = clean(form.bankName).replace(/BARORA/gi, "BARODA");
       const branch = clean(form.bankBranch);
+      const bankAddress = clean(form.bankAddress);
       const capacity = clean(form.systemCapacity || "3");
-      doc.setProperties({title:"Work Completion Report - " + customer, author:vendorName, subject:"Solar Rooftop Work Completion Report"});
-      doc.setFont("helvetica","bold"); doc.setFontSize(15);
+      doc.setProperties({title:"Work Completion Report - " + customer, author:vendorName});
+      doc.setFont("helvetica","normal");
+      doc.setFontSize(11);
       doc.text(vendorName, pageWidth/2, 18, {align:"center"});
-      doc.setFont("helvetica","normal"); doc.setFontSize(9);
-      doc.text("Location: " + clean(form.vendorAddress), pageWidth/2, 25, {align:"center", maxWidth:pageWidth-2*margin});
-      const vendorPhone = String(form.vendorMobile || "").replace(/[^0-9]/g, "").slice(-10);\n      doc.text("Mobile No: " + vendorPhone, pageWidth/2, 31, {align:"center", maxWidth:pageWidth-2*margin});
-      doc.setFontSize(10);
-      doc.text("Date: " + (form.reportDate || new Date().toLocaleDateString("en-IN")), pageWidth-margin, 42, {align:"right"});
-      doc.text("To,", margin, 53);
-      doc.setFont("helvetica","bold"); doc.text(bankName + ",", margin, 59); doc.text(branch + ",", margin, 65);
-      doc.setFont("helvetica","normal"); doc.text(clean(form.bankAddress || "Dhule"), margin, 71);
-      doc.setFont("helvetica","bold"); doc.text("Sub: Submission of Work Completion Report and Hypothecation of Solar Rooftop System", margin, 83, {maxWidth:pageWidth-2*margin});
-      doc.setFont("helvetica","normal"); doc.text("Respected Sir/Madam,", margin, 94);
-      const body = "With reference to the above subject, I hereby confirm that we have successfully completed the installation work of a " + capacity + " KW rooftop solar system at the residence of " + customer + (form.address ? ", at " + clean(form.address) : "") + ", as per the guidelines of DISCOM under the net metering arrangement.";
+      doc.setFontSize(9);
+      doc.text("Location: " + vendorAddress, pageWidth/2, 25, {align:"center", maxWidth:pageWidth-2*margin});
+      doc.text("Mobile No: " + vendorPhone, pageWidth/2, 31, {align:"center", maxWidth:pageWidth-2*margin});
+
+      let y = 48;
+      doc.setFontSize(11);
+      doc.text("To,", margin, y); y += 6;
+      if (bankName) { doc.text(bankName + ",", margin, y); y += 6; }
+      if (branch) { doc.text(branch + ",", margin, y); y += 6; }
+      if (bankAddress) { doc.text(bankAddress + ".", margin, y, {maxWidth:pageWidth-2*margin}); y += 10; }
+      else y += 2;
+
+      doc.setFont("helvetica","bold");
+      const subject = "Sub: Submission of Work Completion Report and Hypothecation of Solar Rooftop System";
+      const subjectLines = doc.splitTextToSize(subject, pageWidth-2*margin);
+      doc.text(subjectLines, margin, y); y += subjectLines.length*5 + 7;
+      doc.setFont("helvetica","normal");
+      doc.text("Respected Sir/Madam,", margin, y); y += 8;
+
+      const body = "With reference to the above subject, I hereby confirm that we have successfully completed the installation work of a " + capacity + " KW rooftop solar system at the residence of " + customer + (form.address ? " " + clean(form.address) : "") + ", as per the guidelines of DISCOM under the net metering arrangement.";
       const bodyLines = doc.splitTextToSize(body, pageWidth-2*margin);
-      doc.text(bodyLines, margin, 102);
-      const y2 = 102 + bodyLines.length*5 + 4;
-      const hyp = "In accordance with the loan arrangement, I hereby hypothecate the installed " + capacity + " KW solar rooftop system to " + bankName + ", " + branch + " as security for the loan sanctioned to " + customer + " for this installation.";
+      doc.text(bodyLines, margin, y); y += bodyLines.length*5 + 5;
+
+      const hyp = "In accordance with the loan arrangement, I hereby hypothecate the installed " + capacity + " KW solar rooftop system to " + bankName + (branch ? ", " + branch : "") + " as security for the loan sanctioned to " + customer + " for this installation.";
       const hypLines = doc.splitTextToSize(hyp, pageWidth-2*margin);
-      doc.text(hypLines, margin, y2);
-      const y3 = y2 + hypLines.length*5 + 4;
-      doc.text("We kindly request you to release the pending payment at the earliest.", margin, y3);
+      doc.text(hypLines, margin, y); y += hypLines.length*5 + 5;
+      doc.text("We kindly request you to release the pending payment at the earliest.", margin, y); y += 12;
+
       const rows = [
-        ["Consumer Name", customer], ["Consumer Number", clean(form.consumerNumber)],
-        ["Customer Mobile", clean(form.customerMobile)], ["System Capacity", capacity + " KW"],
+        ["Consumer Name", customer],
+        ["Consumer Number", clean(form.consumerNumber || form.customerMobile)],
+        ["System Capacity", capacity + " KW"],
         ["Installation Address", clean(form.address)]
       ];
-      if (form.sanctionNumber) rows.push(["Digital Sanction / Application No.", clean(form.sanctionNumber)]);
-      if (form.sanctionDate) rows.push(["Sanction Date", clean(form.sanctionDate)]);
-      if (form.loanAmount) rows.push(["Sanctioned Loan Amount", "Rs. " + clean(form.loanAmount)]);
-
-      autoTable(doc, {startY:y3+8, head:[["Detail","Information"]], body:rows, theme:"grid", margin:{left:margin,right:margin}, styles:{fontSize:9,cellPadding:2.5,overflow:"linebreak"}, headStyles:{fillColor:[235,235,235],textColor:[20,20,20]}, columnStyles:{0:{cellWidth:55},1:{cellWidth:pageWidth-2*margin-55}}});
-      const sy = Math.min((doc.lastAutoTable?.finalY || y3+55)+13, 258);
+      autoTable(doc, {
+        startY:y, head:[["Detail","Information"]], body:rows, theme:"plain",
+        margin:{left:margin,right:margin},
+        styles:{font:"helvetica",fontSize:10,cellPadding:{top:1.5,right:2,bottom:1.5,left:2},textColor:[0,0,0],lineWidth:0,overflow:"linebreak"},
+        headStyles:{fontStyle:"normal",textColor:[0,0,0],fillColor:[255,255,255],lineWidth:0},
+        columnStyles:{0:{cellWidth:48,fontStyle:"normal"},1:{cellWidth:pageWidth-2*margin-48}}
+      });
+      const sy = Math.min((doc.lastAutoTable?.finalY || y+30)+12, 255);
       doc.text("Yours Sincerely,", margin, sy);
       doc.text("(Signature and Stamp)", margin, sy+24);
-      doc.setFont("helvetica","bold"); doc.text("Authorized Representative", margin, sy+30);
-      doc.setFont("helvetica","normal"); doc.text(vendorName, margin, sy+36);
+      doc.text("Authorized Representative", margin, sy+30);
       doc.save("Work-Completion-Report.pdf");
-      setStatus("Work Completion Report PDF generated. Verify customer, bank and sanction details before signing or submitting.");
+      setStatus("Work Completion Report PDF generated. Please verify the values before signing.");
     } catch(e) { console.error(e); setStatus("PDF generation failed: " + (e?.message || String(e))); }
   };
   const inputStyle = {width:"100%",boxSizing:"border-box",padding:"11px 12px",border:"1px solid #d1d5db",borderRadius:8,font:"inherit",background:"#fff",color:"#111827"};
