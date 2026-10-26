@@ -11,16 +11,13 @@ const DEFAULT_VENDOR = {
   vendorMobile: "9168445719",
   vendorEmail: "tejaswinisolarenergy@gmail.com",
   systemCapacity: "3",
-  bankName: "",
-  bankBranch: "",
-  bankIFSC: "",
-  bankAddress: "",
 };
 const fresh = () => {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch {}
   return {
     ...DEFAULT_VENDOR, ...saved,
+    bankName: "", bankBranch: "", bankIFSC: "", bankAddress: "",
     consumerName: "", consumerNumber: "", customerMobile: "", address: "",
     sanctionNumber: "", sanctionDate: "", loanAmount: "", installationDate: new Date().toISOString().slice(0,10),
     systemCapacity: saved.systemCapacity || "3",
