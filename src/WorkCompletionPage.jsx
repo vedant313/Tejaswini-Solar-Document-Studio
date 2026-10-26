@@ -118,15 +118,15 @@ export default function WorkCompletionPage({onBack}) {
       const margin = 18;
       const vendorName = clean(form.vendorName || "TEJASWINI SALES");
       const customer = clean(form.consumerName);
-      const bankName = clean(form.bankName || "BANK OF BARODA");
-      const branch = clean(form.bankBranch || "DHULIA");
+      const bankName = clean(form.bankName).replace(/BARORA/gi, "BARODA");
+      const branch = clean(form.bankBranch);
       const capacity = clean(form.systemCapacity || "3");
       doc.setProperties({title:"Work Completion Report - " + customer, author:vendorName, subject:"Solar Rooftop Work Completion Report"});
       doc.setFont("helvetica","bold"); doc.setFontSize(15);
       doc.text(vendorName, pageWidth/2, 18, {align:"center"});
       doc.setFont("helvetica","normal"); doc.setFontSize(9);
       doc.text("Location: " + clean(form.vendorAddress), pageWidth/2, 25, {align:"center", maxWidth:pageWidth-2*margin});
-      doc.text("Mobile No: " + clean(form.vendorMobile) + (form.vendorEmail ? "   |   " + clean(form.vendorEmail) : ""), pageWidth/2, 31, {align:"center", maxWidth:pageWidth-2*margin});
+      const vendorPhone = String(form.vendorMobile || "").replace(/[^0-9]/g, "").slice(-10);\n      doc.text("Mobile No: " + vendorPhone, pageWidth/2, 31, {align:"center", maxWidth:pageWidth-2*margin});
       doc.setFontSize(10);
       doc.text("Date: " + (form.reportDate || new Date().toLocaleDateString("en-IN")), pageWidth-margin, 42, {align:"right"});
       doc.text("To,", margin, 53);
@@ -151,7 +151,7 @@ export default function WorkCompletionPage({onBack}) {
       if (form.sanctionNumber) rows.push(["Digital Sanction / Application No.", clean(form.sanctionNumber)]);
       if (form.sanctionDate) rows.push(["Sanction Date", clean(form.sanctionDate)]);
       if (form.loanAmount) rows.push(["Sanctioned Loan Amount", "Rs. " + clean(form.loanAmount)]);
-      if (form.bankIFSC) rows.push(["Bank IFSC Code", clean(form.bankIFSC)]);
+
       autoTable(doc, {startY:y3+8, head:[["Detail","Information"]], body:rows, theme:"grid", margin:{left:margin,right:margin}, styles:{fontSize:9,cellPadding:2.5,overflow:"linebreak"}, headStyles:{fillColor:[235,235,235],textColor:[20,20,20]}, columnStyles:{0:{cellWidth:55},1:{cellWidth:pageWidth-2*margin-55}}});
       const sy = Math.min((doc.lastAutoTable?.finalY || y3+55)+13, 258);
       doc.text("Yours Sincerely,", margin, sy);
