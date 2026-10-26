@@ -397,8 +397,8 @@ export default function App() {
   const input = (key,placeholder="",type="text") => <input type={type} value={form[key] ?? ""} placeholder={placeholder} onChange={e=>update(key,e.target.value)} />;
   if (activePage === "wcr") return <WorkCompletionPage onBack={() => setActivePage("documents")} />;
   return <main className="shell">
-    <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Solar Document Studio</h1><p className="muted">Acknowledgement PDF or screenshot · customer details · three PDF drafts</p></div><span className="pill">LOCAL-FIRST MVP</span><button className="secondary" onClick={()=>setActivePage("wcr")}>＋ Work Completion Report</button></header>
-    <section className="intro"><div><h2>Upload acknowledgement PDF. Less repetitive typing.</h2><p>Upload the PM Surya Ghar acknowledgement PDF or portal screenshot. Review extracted fields, fill missing details manually, and prepare document drafts.</p></div></section>
+    <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Solar Document Studio</h1><p className="muted">Customer records · equipment details · document generation</p></div><span className="pill">SOLAR OPERATIONS</span><button className="secondary" onClick={()=>setActivePage("wcr")}>＋ Work Completion Report</button></header>
+    <section className="intro"><div><span className="introKicker">DOCUMENT WORKFLOW</span><h2>Prepare solar installation documents</h2><p>Upload the PM Surya Ghar acknowledgement, verify customer and equipment details, then generate the required documents.</p></div><div className="introMeta"><span>01&nbsp; Customer details</span><span>02&nbsp; System information</span><span>03&nbsp; PDF documents</span></div></section>
     {status && <div className="notice" role="status">{ocrBusy ? "◌ " : "ℹ "}{status}</div>}
     <section className="card">
       <div className="sectionHead"><div><span className="step">01</span><h2>Acknowledgement PDF or screenshot</h2></div><span className="muted">PDF text extraction preferred; verify every field.</span></div>
@@ -432,7 +432,7 @@ export default function App() {
       </div>
     </section>
     <section className="card">
-      <div className="sectionHead"><div><span className="step">04</span><h2>Solar equipment</h2></div><span className="muted">Defaults are editable.</span></div>
+      <div className="sectionHead"><div><span className="step">04</span><h2>Solar equipment</h2></div><span className="muted">Enter the equipment details as per the installed system.</span></div>
       <div className="grid two">
         <Labeled label="Panel manufacturer"><select value={form.moduleManufacturer} onChange={e=>update("moduleManufacturer",e.target.value)}><option>Waaree</option><option>Mundra Solar</option><option>Tata Power Solar</option><option>Other</option></select></Labeled>
         {form.moduleManufacturer==="Other" && <Labeled label="Custom panel brand">{input("customModuleManufacturer","Enter panel brand")}</Labeled>}
@@ -463,6 +463,6 @@ export default function App() {
       </div>
       <div className="bottomActions"><button className="secondary" onClick={saveFields}>Export form data (JSON)</button><button className="secondary" onClick={()=>{setForm(initial);setOcrText("");setAadhaar(null);setAadhaarPreview("");setStatus("Form cleared.");}}>Clear form</button></div>
     </section>
-    <footer>Tejaswini Solar Document Studio · Independent starter project · Keep customer data and identity documents secure.</footer>
+    <footer><strong>TEJASWINI SALES</strong><span>Solar Document Studio&nbsp; · &nbsp;Verify all details before generating documents.</span></footer>
   </main>;
 }
