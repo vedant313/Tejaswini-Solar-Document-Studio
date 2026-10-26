@@ -201,7 +201,6 @@ function textValue(v) { return v == null ? "" : String(v); }
 export default function App() {
   const [activePage,setActivePage] = useState("documents");
   const [form,setForm] = useState(initial);
-  if (activePage === "wcr") return <WorkCompletionPage onBack={() => setActivePage("documents")} />;
   const [status,setStatus] = useState("");
   const [ocrBusy,setOcrBusy] = useState(false);
   const [ocrText,setOcrText] = useState("");
@@ -384,6 +383,7 @@ export default function App() {
     return w>0&&n>0 ? ((w*n)/1000).toFixed(3) : "";
   },[form.moduleWattage,form.customWattage,form.numberOfModules]);
   const input = (key,placeholder="",type="text") => <input type={type} value={form[key] ?? ""} placeholder={placeholder} onChange={e=>update(key,e.target.value)} />;
+  if (activePage === "wcr") return <WorkCompletionPage onBack={() => setActivePage("documents")} />;
   return <main className="shell">
     <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Solar Document Studio</h1><p className="muted">Acknowledgement PDF or screenshot · customer details · three PDF drafts</p></div><span className="pill">LOCAL-FIRST MVP</span><button className="secondary" onClick={()=>setActivePage("wcr")}>＋ Work Completion Report</button></header>
     <section className="intro"><div><h2>Upload acknowledgement PDF. Less repetitive typing.</h2><p>Upload the PM Surya Ghar acknowledgement PDF or portal screenshot. Review extracted fields, fill missing details manually, and prepare document drafts.</p></div></section>
