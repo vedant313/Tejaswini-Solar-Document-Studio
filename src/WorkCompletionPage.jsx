@@ -31,6 +31,11 @@ function extract(text) {
   const app = pick(/Digital Sanction for your application\s*:\s*([A-Z0-9-]+)/i);
   const date = pick(/Date\s*:\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4}|\d{2}[/-]\d{2}[/-]\d{4})/i);
   const amount = pick(/Loan Amount\s*₹?\s*([\d,]+)/i) || pick(/financing for\s+Rs\.?\s*([\d,]+)/i);
+  // Customer/consumer installation address from the approval letter; avoid bank/vendor address labels.
+  const consumerAddress =
+    pick(/(?:Consumer|Customer|Beneficiary)\\s+(?:Installation\\s+)?Address\\s*[:：-]\\s*([\\s\\S]*?)(?=\\s+(?:Consumer|Customer|Beneficiary)\\s+(?:Mobile|Contact|Number)|\\s+(?:Bank|Branch|Vendor|Installer)\\s+(?:Name|Address|Details|Contact)|\\n\\s*The Lender|$)/i) ||
+    pick(/Installation\\s+Address\\s*[:：-]\\s*([\\s\\S]*?)(?=\\s+(?:Consumer|Customer)\\s+(?:Mobile|Contact|Number)|\\s+(?:Bank|Branch|Vendor|Installer)\\s+(?:Name|Address|Details|Contact)|\\n\\s*The Lender|$)/i) ||
+    pick(/Address\\s+of\\s+(?:the\\s+)?(?:Consumer|Customer|Beneficiary)\\s*[:：-]\\s*([\\s\\S]*?)(?=\\s+(?:Mobile|Contact|Bank|Branch|Vendor|Installer)\\b|$)/i);
   const bank = /You have received a digital sanction from\s+(.+?)(?:\n|$)/i.exec(t)?.[1]?.trim() || "";
   const branch = pick(/Branch Name\s+([A-Z][A-Z .'-]{2,})/i);
   const ifsc = pick(/IFSC Code\s+([A-Z]{4}0[A-Z0-9]{6})/i);
@@ -42,6 +47,7 @@ function extract(text) {
   const email = contact.match(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/)?.[0] || "";
   return {
     ...(name ? {consumerName: name} : {}),
+    ...(consumerAddress ? {address: clean(consumerAddress)} : {}),
     ...(app ? {sanctionNumber: app} : {}),
     ...(date ? {sanctionDate: date} : {}),
     ...(amount ? {loanAmount: amount.replace(/,/g, "")} : {}),
