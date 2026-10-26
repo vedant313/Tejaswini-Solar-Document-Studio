@@ -202,6 +202,7 @@ export default function App() {
   const [activePage,setActivePage] = useState("documents");
   const [form,setForm] = useState(initial);
   const [status,setStatus] = useState("");
+  const [pdfPreview,setPdfPreview] = useState(null);
   const [ocrBusy,setOcrBusy] = useState(false);
   const [ocrText,setOcrText] = useState("");
   const [aadhaar,setAadhaar] = useState(null);
@@ -277,6 +278,17 @@ export default function App() {
     const value = form.moduleWattage === "other" ? form.customWattage : form.moduleWattage;
     return Number(value) > 0;
   };
+  const showPdfPreview = (blob, title, filename) => {
+    if (!blob) throw new Error("The PDF could not be created.");
+    setPdfPreview(current => {
+      if (current?.url) URL.revokeObjectURL(current.url);
+      return { url: URL.createObjectURL(blob), title, filename };
+    });
+  };
+  const closePdfPreview = () => setPdfPreview(current => {
+    if (current?.url) URL.revokeObjectURL(current.url);
+    return null;
+  });
   const requirePanelWattage = () => {
     if (hasValidPanelWattage()) return true;
     setStatus("Please select Panel Wattage (Wp) before continuing or downloading.");
@@ -313,8 +325,9 @@ export default function App() {
           customerSignature: form.customerSignature,
           companyStamp: form.companyStamp
         };
-        await generateModelAgreement(originalForm, true);
-        setStatus("Model Agreement generated using the original Tejaswini Sales software layout. Review all filled details before signing.");
+        const blob = await generateModelAgreement(originalForm, false);
+        showPdfPreview(blob, "Model Agreement", "model-agreement.pdf");
+        setStatus("Model Agreement ready. Review the PDF preview before downloading or signing.");
         return;
       }
       const originalForm = {
@@ -373,13 +386,15 @@ export default function App() {
         aadharNumber: "",
       };
       if (kind === "annexure") {
-        await generateDCR(originalForm, true);
-        setStatus("Annexure-I generated using the original software's DCR/Annexure generator.");
+        const blob = await generateDCR(originalForm, false);
+        showPdfPreview(blob, "Annexure-I", "Annexure-DCR.pdf");
+        setStatus("Annexure-I ready. Review the PDF preview before downloading.");
         return;
       }
       if (kind === "wcr") {
-        await generateWCR(originalForm, true);
-        setStatus("Work Completion Report generated using the original software's WCR generator.");
+        const blob = await generateWCR(originalForm, false);
+        showPdfPreview(blob, "Work Completion Report", "WCR.pdf");
+        setStatus("Work Completion Report ready. Review the PDF preview before downloading.");
         return;
       }
     } catch (e) {
@@ -463,6 +478,7 @@ export default function App() {
       </div>
       <div className="bottomActions"><button className="secondary" onClick={saveFields}>Export form data (JSON)</button><button className="secondary" onClick={()=>{setForm(initial);setOcrText("");setAadhaar(null);setAadhaarPreview("");setStatus("Form cleared.");}}>Clear form</button></div>
     </section>
+    {pdfPreview && <div className="pdfModalBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)closePdfPreview();}}><section className="pdfModal" role="dialog" aria-modal="true" aria-labelledby="pdf-preview-title"><header className="pdfModalHead"><div><span className="eyebrow">DOCUMENT PREVIEW</span><h2 id="pdf-preview-title">{pdfPreview.title}</h2><p>Check the pages and details before downloading.</p></div><button className="secondary" onClick={closePdfPreview} aria-label="Close preview">✕ Close</button></header><iframe className="pdfFrame" src={pdfPreview.url} title={pdfPreview.title + " PDF preview"} /><div className="pdfModalActions"><a className="downloadLink" href={pdfPreview.url} download={pdfPreview.filename}>↓ Download PDF</a><button className="secondary" onClick={closePdfPreview}>Back to form</button></div></section></div>}
     <footer><strong>TEJASWINI SALES</strong><span>Solar Document Studio&nbsp; · &nbsp;Verify all details before generating documents.</span></footer>
   </main>;
 }
