@@ -243,7 +243,7 @@ export default function App() {
       if (wattage > 0 && count > 0) {
         const kw = wattage * count / 1000;
         const standard = inverterSizes.find(size => size >= kw) ?? Number(kw.toFixed(1));
-        next.inverterCapacity = String(standard);
+        if (next.inverterCapacity !== "other") next.inverterCapacity = String(standard);
       } else {
         next.inverterCapacity = "";
       }
@@ -416,7 +416,7 @@ export default function App() {
         msedclRepresentative: "",
         totalCost: clean(form.totalCost),
         district: clean(form.district),
-        invertercapacity: clean(form.inverterCapacity),
+        invertercapacity: clean(form.inverterCapacity === "other" ? form.customInverterCapacity : form.inverterCapacity),
         invertermanufacture: clean(form.inverterMake === "Other" ? form.customInverterMake : form.inverterMake),
         aadharImage: (kind === "wcr" && aadhaar && aadhaar.type.startsWith("image/")) ? await fileToDataUrl(aadhaar) : "",
         aadharNumber: "",
@@ -496,7 +496,8 @@ export default function App() {
         <Labeled label="Inverter brand"><select value={form.inverterMake} onChange={e=>update("inverterMake",e.target.value)}><option>PV Blink</option><option>Waaree</option><option>XWatt</option><option>Polycab</option><option>Other</option></select></Labeled>
         {form.inverterMake==="Other" && <Labeled label="Custom inverter brand">{input("customInverterMake","Enter inverter brand")}</Labeled>}
         <Labeled label="Inverter model">{input("inverterModel","Model number")}</Labeled>
-        <Labeled label="Inverter capacity (kW)"><select value={form.inverterCapacity} onChange={e=>update("inverterCapacity",e.target.value)}><option value="">Auto from panel capacity</option>{inverterSizes.map(size=><option key={size} value={String(size)}>{size} kW</option>)}</select></Labeled>
+        <Labeled label="Inverter capacity (kW)"><select value={form.inverterCapacity} onChange={e=>update("inverterCapacity",e.target.value)}><option value="">Auto from panel capacity</option>{inverterSizes.map(size=><option key={size} value={String(size)}>{size} kW</option>)}<option value="other">Other — enter manually</option></select></Labeled>
+        {form.inverterCapacity==="other" && <Labeled label="Custom inverter capacity (kW)">{input("customInverterCapacity","e.g. 7.5","number")}</Labeled>}
       </div>
     </section>
     <section className="card">
