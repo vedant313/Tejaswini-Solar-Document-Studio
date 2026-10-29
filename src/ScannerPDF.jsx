@@ -107,6 +107,8 @@ export default function ScannerPDF({ onBack }) {
   const [target, setTarget] = useState("auto");
   const [documentType, setDocumentType] = useState("auto");
   const [scannerReady, setScannerReady] = useState(false);
+  const [scannerDevices, setScannerDevices] = useState([]);
+  const [selectedScannerId, setSelectedScannerId] = useState("");
   const [customKB, setCustomKB] = useState("1000");
   const [quality, setQuality] = useState(65);
   const [searchable, setSearchable] = useState(true);
@@ -175,11 +177,20 @@ export default function ScannerPDF({ onBack }) {
       const response = await fetch("http://127.0.0.1:8765/status", { cache: "no-store" });
       if (!response.ok) throw new Error("Bridge response " + response.status);
       const data = await response.json();
-      setScannerReady(Boolean(data.ready));
-      setStatus(data.ready ? "Canon scanner bridge is connected. You can scan directly from this website." : "Scanner bridge is not ready.");
+      if (!data.ready) throw new Error("Scanner bridge is not ready.");
+      const devicesResponse = await fetch("http://127.0.0.1:8765/devices", { cache: "no-store" });
+      if (!devicesResponse.ok) throw new Error("Could not list scanner devices.");
+      const devicesData = await devicesResponse.json();
+      const devices = Array.isArray(devicesData.devices) ? devicesData.devices : [];
+      setScannerDevices(devices);
+      setSelectedScannerId(current => devices.some(device => device.id === current) ? current : (devices[0]?.id || ""));
+      setScannerReady(devices.length > 0);
+      setStatus(devices.length ? "Scanner bridge connected. Select the scanner you want to use." : "Bridge connected, but Windows WIA did not find any scanner. Check the USB cable and Canon driver.");
     } catch {
       setScannerReady(false);
-      setStatus("Scanner helper is not running. Start TejaswiniScannerBridge.exe on this Windows PC, then click Connect again.");
+      setScannerDevices([]);
+      setSelectedScannerId("");
+      setStatus("Scanner helper is not running, or the device list could not be read. Start TejaswiniScannerBridge.exe on this Windows PC, then click Connect again.");
     }
   };
   const scanFromWebsite = async () => {
@@ -189,7 +200,7 @@ export default function ScannerPDF({ onBack }) {
       setStatus("Sending scan request to the local Canon/WIA scanner…");
       const response = await fetch("http://127.0.0.1:8765/scan", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dpi: Number(dpi), colorMode })
+        body: JSON.stringify({ dpi: Number(dpi), colorMode, deviceId: selectedScannerId })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Scanner request failed");
@@ -197,7 +208,7 @@ export default function ScannerPDF({ onBack }) {
       const file = new File([blob], data.fileName || ("canon-scan-" + Date.now() + ".jpg"), { type: "image/jpeg", lastModified: Date.now() });
       setFiles(prev => [...prev, file]);
       setResult(null);
-      setStatus("Scan received in the website. Scan the next page if needed, then choose document type/size and create PDF.");
+      setStatus("Scan received from " + (scannerDevices.find(device => device.id === selectedScannerId)?.name || "selected scanner") + ". Scan the next page if needed, then choose document type/size and create PDF.");
       setScannerReady(true);
     } catch (error) {
       setScannerReady(false);
@@ -209,8 +220,8 @@ export default function ScannerPDF({ onBack }) {
     <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Scanner &amp; PDF</h1><p className="muted">Prepare scanned documents, optimize file size and add searchable OCR text.</p></div><div className="headerActions"><button className="secondary" onClick={onBack}>← Back to Document Studio</button></div></header>
     <section className="intro"><div><span className="introKicker">CANON USB SCANNER WORKFLOW</span><h2>Scan, optimize and save</h2><p>Scan with Canon’s Windows software, then combine pages, add OCR text and target the PDF size required for your solar paperwork.</p></div><div className="introMeta"><span>PDF or image input</span><span>OCR: English</span><span>Processed locally in browser</span></div></section>
     <section className="card"><div className="sectionHead"><div><span className="step">01</span><h2>Scan directly from this website</h2></div><span className={scannerReady ? "resultSuccess" : "resultWarning"}>{scannerReady ? "Scanner connected" : "Scanner not connected"}</span></div>
-      <div className="scannerGuide"><div><strong>Canon USB scanner connection</strong><p>Connect your Canon printer by USB, start the Windows Scanner Bridge on this PC, then connect here.</p><small>Direct scanning requires the small Windows helper and a Canon driver that supports WIA. This helper runs locally; the scanned pages are sent to this browser, not to our server.</small></div><div className="scannerButtons"><button className="secondary" onClick={connectScanner} disabled={busy}>⟳ Connect scanner</button><button onClick={scanFromWebsite} disabled={busy}>{busy ? "Working…" : "▣ Scan page now"}</button></div></div>
-      <div className="grid two scannerSettings"><label className="field"><span>Scan resolution</span><select value={dpi} onChange={e=>setDpi(e.target.value)}><option value="150">150 DPI — smaller files</option><option value="200">200 DPI — recommended for text</option><option value="300">300 DPI — clearer detail</option></select></label><label className="field"><span>Scan color mode</span><select value={colorMode} onChange={e=>setColorMode(e.target.value)}><option value="color">Color</option><option value="grayscale">Grayscale</option><option value="bw">Black &amp; White</option></select></label></div>
+      <div className="scannerGuide"><div><strong>Canon USB scanner connection</strong><p>Connect your Canon printer by USB, start the Windows Scanner Bridge on this PC, then connect here.</p><small>Direct scanning requires the small Windows helper and a Canon driver that supports WIA. This helper runs locally; the scanned pages are sent to this browser, not to our server.</small></div><div className="scannerButtons"><button className="secondary" onClick={connectScanner} disabled={busy}>⟳ Connect scanner</button><button onClick={scanFromWebsite} disabled={busy || !scannerReady || !selectedScannerId}>{busy ? "Working…" : "▣ Scan page now"}</button></div></div>
+      <div className="grid two scannerSettings"><label className="field"><span>Select scanner device</span><select value={selectedScannerId} onChange={e=>setSelectedScannerId(e.target.value)} disabled={!scannerDevices.length || busy}><option value="">Connect to list available devices</option>{scannerDevices.map(device=><option key={device.id} value={device.id}>{device.name}</option>)}</select><small>Click Connect scanner to refresh the devices connected to Windows.</small></label><label className="field"><span>Scan resolution</span><select value={dpi} onChange={e=>setDpi(e.target.value)}><option value="150">150 DPI — smaller files</option><option value="200">200 DPI — recommended for text</option><option value="300">300 DPI — clearer detail</option></select></label><label className="field"><span>Scan color mode</span><select value={colorMode} onChange={e=>setColorMode(e.target.value)}><option value="color">Color</option><option value="grayscale">Grayscale</option><option value="bw">Black &amp; White</option></select></label></div>
       <p className="muted">For multi-page documents, click Scan page now for each page. The scanned pages automatically appear in the file list below. Some Canon drivers may not support WIA; if so, the helper will need adapting for that scanner.</p>
     </section>
     <section className="card"><div className="sectionHead"><div><span className="step">02</span><h2>Import scanned pages</h2></div><span className="muted">{files.length} file(s)</span></div>
