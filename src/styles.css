@@ -51,3 +51,11 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .resultSuccess,.resultWarning,.resultFailed{font-size:11px;padding:5px 8px;border-radius:4px;white-space:nowrap}.resultSuccess{color:#d5b56e;border:1px solid #625431}.resultWarning{color:#e9bd71;border:1px solid #80633a}.resultFailed{color:#ef9b91;border:1px solid #7c4038}
 .batchResult .compressionStats{margin:0}.batchResult .bottomActions{margin-top:0}
 @media(max-width:760px){.batchFile{align-items:flex-start;flex-wrap:wrap}.batchFileInfo{min-width:calc(100% - 50px)}.batchFile button{margin-left:40px}.batchResultHead{align-items:flex-start;flex-direction:column}.batchResult .compressionStats{grid-template-columns:1fr}}
+
+.imagePdfList{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.imagePdfItem{display:flex;align-items:center;gap:12px;border:1px solid #343530;background:#131411;border-radius:7px;padding:12px;min-width:0}
+.imagePdfItem>img{width:58px;height:58px;object-fit:cover;border-radius:5px;background:#222}
+.imagePdfInfo{display:flex;flex:1;min-width:0;flex-direction:column;gap:5px}
+.imagePdfInfo strong{font-size:13px;overflow-wrap:anywhere}.imagePdfInfo small{font-size:11px;color:#a3a49d}
+.imagePdfActions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.imagePdfActions button{padding:8px 10px}
+@media(max-width:760px){.imagePdfItem{flex-wrap:wrap;align-items:flex-start}.imagePdfInfo{min-width:calc(100% - 85px)}.imagePdfActions{width:100%;margin-left:70px}}
