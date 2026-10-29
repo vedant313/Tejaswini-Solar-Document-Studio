@@ -42,3 +42,12 @@ footer{align-items:flex-end}.footerBrand{display:flex;flex-direction:column;gap:
 .compressionStats span{font-size:11px;color:#a3a49d}.compressionStats strong{font-size:18px;color:#d5b56e}
 button:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:760px){.compressModes{grid-template-columns:1fr}.compressMode{min-height:0}.compressionStats{grid-template-columns:1fr}.manualCompression{grid-template-columns:1fr}}
+
+.batchFileList,.batchResults{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.batchFile,.batchResult{border:1px solid #343530;background:#131411;border-radius:7px;padding:13px}
+.batchFile{display:flex;align-items:center;gap:12px}.batchFileIndex{display:grid;place-items:center;flex:0 0 28px;height:28px;border:1px solid #5b594b;border-radius:50%;color:#d5b56e;font-size:12px}
+.batchFileInfo{display:flex;flex:1;min-width:0;flex-direction:column;gap:5px}.batchFileInfo strong,.batchResultHead strong{font-size:13px;overflow-wrap:anywhere}.batchFileInfo small{color:#a3a49d;font-size:11px}
+.batchFile button{padding:8px 10px}.batchResult{display:flex;flex-direction:column;gap:12px}.batchResultHead{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.resultSuccess,.resultWarning,.resultFailed{font-size:11px;padding:5px 8px;border-radius:4px;white-space:nowrap}.resultSuccess{color:#d5b56e;border:1px solid #625431}.resultWarning{color:#e9bd71;border:1px solid #80633a}.resultFailed{color:#ef9b91;border:1px solid #7c4038}
+.batchResult .compressionStats{margin:0}.batchResult .bottomActions{margin-top:0}
+@media(max-width:760px){.batchFile{align-items:flex-start;flex-wrap:wrap}.batchFileInfo{min-width:calc(100% - 50px)}.batchFile button{margin-left:40px}.batchResultHead{align-items:flex-start;flex-direction:column}.batchResult .compressionStats{grid-template-columns:1fr}}
