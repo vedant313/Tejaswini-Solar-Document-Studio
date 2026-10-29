@@ -2,17 +2,16 @@ using System;
 using System.IO;
 using System.Net;
 using System.Text;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Web.Script.Serialization;
-using WIA;
 
-// Local-only bridge: lets the Tejaswini website request a scan from Windows WIA.
+// Local-only bridge: a web page can request scans from Windows WIA through loopback.
 internal static class Program
 {
     private const string Prefix = "http://127.0.0.1:8765/";
+    private const string JpegFormat = "{B96B3CAE-0728-11D3-9D7B-0000F81EF32E}";
     private static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+
     [STAThread]
     private static void Main()
     {
@@ -33,6 +32,7 @@ internal static class Program
             }
         }
     }
+
     private static void Handle(HttpListenerContext c)
     {
         c.Response.Headers["Access-Control-Allow-Origin"] = "*";
@@ -47,50 +47,68 @@ internal static class Program
         {
             var body = new StreamReader(c.Request.InputStream, c.Request.ContentEncoding).ReadToEnd();
             var opts = Json.Deserialize<Dictionary<string, object>>(body) ?? new Dictionary<string, object>();
-            int dpi = opts.ContainsKey("dpi") ? Convert.ToInt32(opts["dpi"]) : 200;
+            int dpi = opts.ContainsKey("dpi") ? Math.Max(75, Math.Min(600, Convert.ToInt32(opts["dpi"]))) : 200;
             string mode = opts.ContainsKey("colorMode") ? Convert.ToString(opts["colorMode"]) : "grayscale";
-            var image = ScanOne(dpi, mode);
+            byte[] image = ScanOne(dpi, mode);
             Reply(c.Response, 200, new { fileName = "canon-scan-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".jpg", mimeType = "image/jpeg", dataUrl = "data:image/jpeg;base64," + Convert.ToBase64String(image) });
             return;
         }
         Reply(c.Response, 404, new { error = "Unknown endpoint" });
     }
+
     private static List<object> ListDevices()
     {
         var result = new List<object>();
-        var manager = new DeviceManager();
-        foreach (DeviceInfo info in manager.DeviceInfos)
+        dynamic manager = CreateWiaManager();
+        dynamic infos = manager.DeviceInfos;
+        for (int i = 1; i <= (int)infos.Count; i++)
         {
-            if ((int)info.Type == 1)
+            dynamic info = infos.Item(i);
+            if (Convert.ToInt32(info.Type) == 1)
             {
                 string name = "WIA scanner";
-                try { name = Convert.ToString(info.Properties["Name"].get_Value()); } catch { }
+                try { name = Convert.ToString(info.Properties.Item("Name").Value); } catch { }
                 result.Add(new { id = Convert.ToString(info.DeviceID), name = name });
             }
         }
         return result;
     }
+
     private static byte[] ScanOne(int dpi, string mode)
     {
-        var manager = new DeviceManager();
-        DeviceInfo chosen = null;
-        foreach (DeviceInfo info in manager.DeviceInfos) { if ((int)info.Type == 1) { chosen = info; break; } }
+        dynamic manager = CreateWiaManager();
+        dynamic infos = manager.DeviceInfos;
+        dynamic chosen = null;
+        for (int i = 1; i <= (int)infos.Count; i++)
+        {
+            dynamic info = infos.Item(i);
+            if (Convert.ToInt32(info.Type) == 1) { chosen = info; break; }
+        }
         if (chosen == null) throw new InvalidOperationException("Windows WIA did not find a scanner. Install the Canon scanner driver and check USB connection.");
-        Device device = chosen.Connect();
-        Item item = device.Items[1];
+        dynamic device = chosen.Connect();
+        dynamic item = device.Items.Item(1);
         SetProperty(item.Properties, 6147, dpi);
         SetProperty(item.Properties, 6148, dpi);
         int intent = mode == "color" ? 1 : mode == "bw" ? 4 : 2;
         SetProperty(item.Properties, 6146, intent);
-        ImageFile img = (ImageFile)item.Transfer(FormatID.wiaFormatJPEG);
+        dynamic img = item.Transfer(JpegFormat);
         string temp = Path.Combine(Path.GetTempPath(), "tejaswini-scan-" + Guid.NewGuid().ToString("N") + ".jpg");
         try { img.SaveFile(temp); return File.ReadAllBytes(temp); }
         finally { try { if (File.Exists(temp)) File.Delete(temp); } catch { } }
     }
-    private static void SetProperty(IProperties props, object id, object value)
+
+    private static object CreateWiaManager()
     {
-        try { props.get_Item(ref id).set_Value(ref value); } catch { /* driver may not support this property */ }
+        Type type = Type.GetTypeFromProgID("WIA.DeviceManager");
+        if (type == null) throw new InvalidOperationException("Windows Image Acquisition (WIA) is unavailable on this PC.");
+        return Activator.CreateInstance(type);
     }
+
+    private static void SetProperty(dynamic props, object id, object value)
+    {
+        try { dynamic prop = props.Item(id); prop.Value = value; } catch { /* scanner driver may not expose this setting */ }
+    }
+
     private static void Reply(HttpListenerResponse response, int status, object data)
     {
         byte[] bytes = Encoding.UTF8.GetBytes(Json.Serialize(data));
