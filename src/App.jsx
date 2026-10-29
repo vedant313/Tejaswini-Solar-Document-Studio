@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import CustomerRecords from "./CustomerRecords.jsx";
 import WorkCompletionPage from "./WorkCompletionPage.jsx";
+import PDFCompressor from "./PDFCompressor.jsx";
 import { createWorker } from "tesseract.js";
 import jsPDF from "jspdf";
 import { PDFDocument } from "pdf-lib";
@@ -477,9 +478,10 @@ export default function App() {
   },[form.moduleWattage,form.customWattage,form.numberOfModules]);
   const input = (key,placeholder="",type="text") => <input type={type} value={form[key] ?? ""} placeholder={placeholder} onChange={e=>update(key,e.target.value)} />;
   if (activePage === "records") return <CustomerRecords records={records} onBack={() => setActivePage("documents")} onEdit={loadCustomerRecord} onDelete={deleteCustomerRecord} onToggleRts={toggleRtsPrepared} onExport={exportRecords} onOpenDocument={(doc) => { const w=window.open(); if(w){w.document.write(`<iframe src="${doc.dataUrl}" style="border:0;width:100%;height:100vh"></iframe>`);w.document.title=doc.title;} }} />;
+  if (activePage === "compressor") return <PDFCompressor onBack={() => setActivePage("documents")} />;
   if (activePage === "wcr") return <WorkCompletionPage onBack={() => setActivePage("documents")} />;
   return <main className="shell">
-    <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Solar Document Studio</h1><p className="muted">Customer records · equipment details · document generation</p></div><div className="brandCredit"><span className="pill">SOLAR OPERATIONS</span><span className="builtBy">ENGINEERED BY <strong>NEXSA TECHNOLOGIES</strong></span></div><div className="headerActions"><button className="secondary" onClick={()=>setActivePage("records")}>▤ Customer records ({records.length})</button><button className="secondary" onClick={()=>setActivePage("wcr")}>＋ Work Completion Report</button></div></header>
+    <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Solar Document Studio</h1><p className="muted">Customer records · equipment details · document generation</p></div><div className="brandCredit"><span className="pill">SOLAR OPERATIONS</span><span className="builtBy">ENGINEERED BY <strong>NEXSA TECHNOLOGIES</strong></span></div><div className="headerActions"><button className="secondary" onClick={()=>setActivePage("records")}>▤ Customer records ({records.length})</button><button className="secondary" onClick={()=>setActivePage("wcr")}>＋ Work Completion Report</button><button className="secondary" onClick={()=>setActivePage("compressor")}>⇩ PDF Compressor</button></div></header>
     <section className="intro"><div><span className="introKicker">TEJASWINI SALES&nbsp; / &nbsp;DOCUMENT WORKFLOW</span><h2>Prepare solar installation documents</h2><p>Upload the PM Surya Ghar acknowledgement, verify customer and equipment details, then generate the required documents.</p></div><div className="introMeta"><span>01&nbsp; Customer details</span><span>02&nbsp; System information</span><span>03&nbsp; PDF documents</span></div></section>
     {status && <div className="notice" role="status">{ocrBusy ? "◌ " : "ℹ "}{status}</div>}
     <section className="card">
