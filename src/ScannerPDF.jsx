@@ -134,6 +134,8 @@ export default function ScannerPDF({ onBack }) {
         ? [{ scale: 0.55, quality: 0.48 }, { scale: 0.42, quality: 0.36 }, { scale: 0.32, quality: 0.27 }, { scale: 0.24, quality: 0.2 }, { scale: 0.17, quality: 0.14 }]
         : target === "2mb"
           ? [{ scale: 1, quality: 0.68 }, { scale: 0.82, quality: 0.55 }, { scale: 0.65, quality: 0.42 }, { scale: 0.5, quality: 0.3 }, { scale: 0.38, quality: 0.22 }]
+          : target === "custom"
+          ? [{ scale: 1, quality: quality / 100 }, { scale: 0.82, quality: Math.max(0.25, quality / 100 - 0.12) }, { scale: 0.65, quality: Math.max(0.2, quality / 100 - 0.22) }, { scale: 0.5, quality: Math.max(0.16, quality / 100 - 0.32) }, { scale: 0.38, quality: 0.18 }]
           : [{ scale: 1, quality: quality / 100 }];
       for (let i = 0; i < attempts.length; i++) {
         chosen = attempts[i];
