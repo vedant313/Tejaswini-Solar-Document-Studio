@@ -139,7 +139,8 @@ export default function ScannerPDF({ onBack }) {
         pages.push(...next);
       }
       if (!pages.length) throw new Error("No pages were found in the selected files.");
-      const needsOcr = searchable || documentType === "auto" || target === "auto";\n      const ocrResult = needsOcr ? await recognizePages(pages, setStatus) : { words: [], text: "" };
+      const needsOcr = searchable || documentType === "auto" || target === "auto";
+      const ocrResult = needsOcr ? await recognizePages(pages, setStatus) : { words: [], text: "" };
       const detected = documentType === "auto" ? detectDocumentType(ocrResult.text) : documentType;
       const effectiveTarget = target === "auto" ? targetForDocument(detected) : target;
       let blob;
