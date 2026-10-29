@@ -35,11 +35,16 @@ internal static class Program
 
     private static void Handle(HttpListenerContext c)
     {
-        c.Response.Headers["Access-Control-Allow-Origin"] = "*";
-        c.Response.Headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
-        c.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
+        string origin = c.Request.Headers["Origin"] ?? "";
+        bool trustedOrigin = IsTrustedOrigin(origin);
+        if (trustedOrigin) {
+            c.Response.Headers["Access-Control-Allow-Origin"] = origin;
+            c.Response.Headers["Vary"] = "Origin";
+            c.Response.Headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
+            c.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
+        }
         c.Response.Headers["Cache-Control"] = "no-store";
-        if (c.Request.HttpMethod == "OPTIONS") { c.Response.StatusCode = 204; c.Response.Close(); return; }
+        if (c.Request.HttpMethod == "OPTIONS") { c.Response.StatusCode = trustedOrigin ? 204 : 403; c.Response.Close(); return; }
         var path = c.Request.Url.AbsolutePath.ToLowerInvariant();
         if (path == "/status") { Reply(c.Response, 200, new { ready = true, bridge = "Tejaswini WIA scanner bridge" }); return; }
         if (path == "/devices") { Reply(c.Response, 200, new { devices = ListDevices() }); return; }
@@ -54,6 +59,15 @@ internal static class Program
             return;
         }
         Reply(c.Response, 404, new { error = "Unknown endpoint" });
+    }
+
+    private static bool IsTrustedOrigin(string origin)
+    {
+        if (origin == "https://tejaswini-rts-generator.vercel.app") return true;
+        return System.Text.RegularExpressions.Regex.IsMatch(
+            origin,
+            @"^https://tejaswini-rts-generator-git-[a-z0-9-]+-galaxy-tech-corporation\.vercel\.app$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
 
     private static List<object> ListDevices()
