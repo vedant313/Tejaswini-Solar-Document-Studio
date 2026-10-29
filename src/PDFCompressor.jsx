@@ -49,7 +49,7 @@ export default function PDFCompressor({onBack}){
     for(const attempt of attempts){blob=await render(attempt.scale,attempt.quality);chosen=attempt;if(blob.size<=2*MB)break;}
    }
    const name=safeName(file.name)+"-compressed.pdf";
-   return {name,blob,size:blob.size,originalSize:file.size,scale:chosen.scale,quality:chosen.quality,tooLarge:(mode==="2mb"&&blob.size>2*MB)||(mode==="299mb"&&blob.size>299*MB)};
+   return {name,blob,url:URL.createObjectURL(blob),size:blob.size,originalSize:file.size,scale:chosen.scale,quality:chosen.quality,tooLarge:(mode==="2mb"&&blob.size>2*MB)||(mode==="299mb"&&blob.size>299*MB)};
   }finally{try{await pdf.destroy();}catch{}}
  }
  const compress=async()=>{
@@ -75,7 +75,7 @@ export default function PDFCompressor({onBack}){
    setTimeout(()=>URL.revokeObjectURL(url),60000);setProgress("ZIP downloaded with "+successful.length+" PDF(s).");
   }catch(e){console.error(e);setProgress("Could not create ZIP. Download the files individually instead.");}
  };
- const reset=()=>{results.forEach(r=>{});setFiles([]);setResults([]);setProgress("");if(inputRef.current)inputRef.current.value="";};
+ const reset=()=>{results.forEach(r=>{if(r.url)URL.revokeObjectURL(r.url);});setFiles([]);setResults([]);setProgress("");if(inputRef.current)inputRef.current.value="";};
  return <main className="shell">
   <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>PDF Compressor</h1><p className="muted">Compress multiple PDFs locally in your browser.</p></div><div className="headerActions"><button className="secondary" onClick={onBack}>← Back to Document Studio</button></div></header>
   <section className="intro"><div><span className="introKicker">PDF UTILITIES</span><h2>Batch compress PDFs</h2><p>Select 3–4 PDFs or more, compress them one after another, then download individually or together in a ZIP.</p></div><div className="introMeta"><span>Browser-side processing</span><span>Original files stay unchanged</span></div></section>
@@ -96,7 +96,7 @@ export default function PDFCompressor({onBack}){
    {progress&&<div className="notice" role="status">{busy?"◌ ":"ℹ "}{progress}</div>}
   </section>
   {results.length>0&&<section className="card"><div className="sectionHead"><div><span className="step">03</span><h2>Compression results</h2></div><span className="muted">{results.filter(r=>r.blob).length} ready</span></div>
-   <div className="batchResults">{results.map((r,i)=><div className="batchResult" key={r.name+"-"+i}><div className="batchResultHead"><strong>{r.name}</strong><span className={r.error?"resultFailed":r.tooLarge?"resultWarning":"resultSuccess"}>{r.error?"Failed":r.tooLarge?"Target not reached":"Ready"}</span></div>{r.error?<p className="muted">{r.error}</p>:<><div className="compressionStats"><div><span>Original</span><strong>{prettySize(r.originalSize)}</strong></div><div><span>Compressed</span><strong>{prettySize(r.size)}</strong></div><div><span>Reduction</span><strong>{r.originalSize?Math.max(0,Math.round((1-r.size/r.originalSize)*100))+"%":"—"}</strong></div></div>{r.tooLarge&&<p className="muted">Could not reach the selected target; try Manual mode with lower quality or resolution.</p>}<div className="bottomActions"><a className="downloadLink" href={URL.createObjectURL(r.blob)} download={r.name}>↓ Download this PDF</a></div></>}</div>)}</div>
+   <div className="batchResults">{results.map((r,i)=><div className="batchResult" key={r.name+"-"+i}><div className="batchResultHead"><strong>{r.name}</strong><span className={r.error?"resultFailed":r.tooLarge?"resultWarning":"resultSuccess"}>{r.error?"Failed":r.tooLarge?"Target not reached":"Ready"}</span></div>{r.error?<p className="muted">{r.error}</p>:<><div className="compressionStats"><div><span>Original</span><strong>{prettySize(r.originalSize)}</strong></div><div><span>Compressed</span><strong>{prettySize(r.size)}</strong></div><div><span>Reduction</span><strong>{r.originalSize?Math.max(0,Math.round((1-r.size/r.originalSize)*100))+"%":"—"}</strong></div></div>{r.tooLarge&&<p className="muted">Could not reach the selected target; try Manual mode with lower quality or resolution.</p>}<div className="bottomActions"><a className="downloadLink" href={r.url} download={r.name}>↓ Download this PDF</a></div></>}</div>)}</div>
    <div className="bottomActions"><button disabled={!results.some(r=>r.blob)||busy} onClick={downloadAll}>⬇ Download All as ZIP</button></div>
   </section>}
   <footer><div className="footerBrand"><strong>TEJASWINI SALES</strong><span>Solar Document Studio</span></div><span className="footerCredit">Designed &amp; engineered by <strong>NEXSA TECHNOLOGIES</strong><br/>Check output quality before official submission.</span></footer>
