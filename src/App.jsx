@@ -484,23 +484,26 @@ export default function App() {
   if (activePage === "image-to-pdf") return <ImageToPDF onBack={() => setActivePage("documents")} />;
   if (activePage === "scanner-pdf") return <ScannerPDF onBack={() => setActivePage("documents")} />;
   if (activePage === "wcr") return <WorkCompletionPage onBack={() => setActivePage("documents")} />;
-  return <main className="shell">
-    <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Solar Document Studio</h1><p className="muted">Customer records · equipment details · document generation</p></div><div className="brandCredit"><span className="pill">SOLAR OPERATIONS</span><span className="builtBy">ENGINEERED BY <strong>NEXSA TECHNOLOGIES</strong></span></div><div className="headerActions"><button className="secondary" onClick={()=>setActivePage("records")}>▤ Customer records ({records.length})</button><button className="secondary" onClick={()=>setActivePage("wcr")}>＋ Work Completion Report</button><button className="secondary" onClick={()=>setActivePage("compressor")}>⇩ PDF Compressor</button><button className="secondary" onClick={()=>setActivePage("image-to-pdf")}>▧ Image to PDF</button><button className="secondary" onClick={()=>setActivePage("scanner-pdf")}>▣ Scanner &amp; PDF</button></div></header>
-    <section className="intro"><div><span className="introKicker">TEJASWINI SALES&nbsp; / &nbsp;DOCUMENT WORKFLOW</span><h2>Prepare solar installation documents</h2><p>Upload the PM Surya Ghar acknowledgement, verify customer and equipment details, then generate the required documents.</p></div><div className="introMeta"><span>01&nbsp; Customer details</span><span>02&nbsp; System information</span><span>03&nbsp; PDF documents</span></div></section>
+  return <main className="shell homeShell">
+    <header className="top"><div className="mark">TS</div><div className="brandTitle"><p className="eyebrow">TEJASWINI SALES</p><h1>Solar Document Studio</h1><p className="muted">Solar installation paperwork, organised.</p></div><div className="brandCredit"><span className="builtBy">BY <strong>NEXSA TECHNOLOGIES</strong></span><button className="secondary recordsHeaderButton" onClick={()=>setActivePage("records")}>▤ Customer records <span>{records.length}</span></button></div></header>
+    <nav className="toolNav" aria-label="Document tools"><div className="toolNavIntro"><span>QUICK TOOLS</span><small>Choose a utility</small></div><div className="toolNavItems"><button onClick={()=>setActivePage("wcr")}><span className="toolGlyph">W</span>Work Completion Report</button><button onClick={()=>setActivePage("compressor")}><span className="toolGlyph">↓</span>PDF Compressor</button><button onClick={()=>setActivePage("image-to-pdf")}><span className="toolGlyph">▧</span>Image to PDF</button><button onClick={()=>setActivePage("scanner-pdf")}><span className="toolGlyph">▣</span>Scanner &amp; PDF</button></div></nav>
+    <section className="intro introClean"><div><span className="introKicker">DOCUMENT WORKFLOW</span><h2>Prepare solar installation documents</h2><p>Upload the PM Surya Ghar acknowledgement, verify customer and equipment details, then generate the required documents.</p></div></section>
     {status && <div className="notice" role="status">{ocrBusy ? "◌ " : "ℹ "}{status}</div>}
     <section className="card">
       <div className="sectionHead"><div><span className="step">01</span><h2>Acknowledgement PDF or screenshot</h2></div><span className="muted">PDF text extraction preferred; verify every field.</span></div>
       <label className="upload" onDragEnter={e=>{e.preventDefault();e.stopPropagation();}} onDragOver={e=>{e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect="copy";}} onDrop={e=>{e.preventDefault();e.stopPropagation();const file=e.dataTransfer?.files?.[0];if(file)onUpload(file);}}><input type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp" onChange={e=>onUpload(e.target.files?.[0])}/><span className="uploadIcon">↑</span><strong>{ocrBusy?"Reading file…":"Choose acknowledgement PDF or screenshot"}</strong><small>PDF, PNG, JPG or WebP · processed in your browser</small><small>Or drag and drop the file here</small></label>
       {ocrText && <details className="raw"><summary>View OCR text for troubleshooting</summary><pre>{ocrText}</pre></details>}
     </section>
-    <section className="card">
-      <div className="sectionHead"><div><span className="step">02</span><h2>Company contact settings</h2></div><span className="muted">Used for vendor contact fields, not customer email.</span></div>
-      <div className="grid two">
-        <Labeled label="Company email"><select value={form.email} onChange={e=>update("email",e.target.value)}>{emails.map(e=><option key={e}>{e}</option>)}</select></Labeled>
-        <Labeled label="Company mobile number"><select value={selectedPhone} onChange={e=>{setSelectedPhone(e.target.value);update("installerPhone",e.target.value)}}>{phones.map(p=><option key={p.number} value={p.number}>{p.number.replace(/(\d{5})(\d{5})/,"$1 $2")} — {p.label}</option>)}</select></Labeled>
+    <details className="card settingsCard">
+      <summary className="settingsSummary"><span><strong>Company contact settings</strong><small>Optional · default email and phone used in documents</small></span><span className="settingsToggle">＋</span></summary>
+      <div className="settingsBody">
+        <div className="grid two">
+          <Labeled label="Company email"><select value={form.email} onChange={e=>update("email",e.target.value)}>{emails.map(e=><option key={e}>{e}</option>)}</select></Labeled>
+          <Labeled label="Company mobile number"><select value={selectedPhone} onChange={e=>{setSelectedPhone(e.target.value);update("installerPhone",e.target.value)}}>{phones.map(p=><option key={p.number} value={p.number}>{p.number.replace(/(\d{5})(\d{5})/,"$1 $2")} — {p.label}</option>)}</select></Labeled>
+        </div>
+        <div className="addPhone"><input value={customPhone} onChange={e=>setCustomPhone(e.target.value)} inputMode="numeric" placeholder="Add another 10-digit mobile number"/><button className="secondary" onClick={addPhone}>＋ Add number</button></div>
       </div>
-      <div className="addPhone"><input value={customPhone} onChange={e=>setCustomPhone(e.target.value)} inputMode="numeric" placeholder="Add another 10-digit mobile number"/><button className="secondary" onClick={addPhone}>＋ Add number</button></div>
-    </section>
+    </details>
     <section className="card">
       <div className="sectionHead"><div><span className="step">03</span><h2>Customer & portal details</h2></div><span className="muted">Review and correct OCR values.</span></div>
       <div className="grid two">
@@ -536,12 +539,13 @@ export default function App() {
         {form.inverterCapacity==="other" && <Labeled label="Custom inverter capacity (kW)">{input("customInverterCapacity","e.g. 7.5","number")}</Labeled>}
       </div>
     </section>
-    <section className="card">
-      <div className="sectionHead"><div><span className="step">05</span><h2>Aadhaar image (manual upload)</h2></div><span className="muted">Photo is appended after WCR.</span></div>
-      <label className="upload compact" onDragEnter={e=>{e.preventDefault();e.stopPropagation();}} onDragOver={e=>{e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect="copy";}} onDrop={e=>{e.preventDefault();e.stopPropagation();const file=e.dataTransfer?.files?.[0];if(file)onAadhaar(file);}}><input type="file" accept="image/png,image/jpeg" onChange={e=>onAadhaar(e.target.files?.[0])}/><span className="uploadIcon">＋</span><strong>{aadhaar ? aadhaar.name : "Upload Aadhaar photo (JPG or PNG)"}</strong><small>Or drag and drop the Aadhaar image here</small><small>Max 8 MB. It will be attached as a page after the WCR.</small></label>
-      {aadhaarPreview && <img className="aadhaarPreview" src={aadhaarPreview} alt="Aadhaar upload preview"/>}
-
-    </section>
+    <details className="card optionalCard">
+      <summary className="settingsSummary"><span><strong>Optional: Aadhaar image for WCR</strong><small>{aadhaar ? "Selected: " + aadhaar.name : "Only needed when the report requires an Aadhaar image"}</small></span><span className="settingsToggle">＋</span></summary>
+      <div className="settingsBody">
+        <label className="upload compact" onDragEnter={e=>{e.preventDefault();e.stopPropagation();}} onDragOver={e=>{e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect="copy";}} onDrop={e=>{e.preventDefault();e.stopPropagation();const file=e.dataTransfer?.files?.[0];if(file)onAadhaar(file);}}><input type="file" accept="image/png,image/jpeg" onChange={e=>onAadhaar(e.target.files?.[0])}/><span className="uploadIcon">＋</span><strong>{aadhaar ? aadhaar.name : "Choose Aadhaar photo (JPG or PNG)"}</strong><small>Max 8 MB · appended after the WCR</small></label>
+        {aadhaarPreview && <img className="aadhaarPreview" src={aadhaarPreview} alt="Aadhaar upload preview"/>}
+      </div>
+    </details>
     <section className="card">
       <div className="sectionHead"><div><span className="step">06</span><h2>Generate document drafts</h2></div></div>
       <p className="muted">These PDFs use the supplied Annexure-I, WCR and Model Agreement pages as templates. Review all filled values, placement and signature areas before official submission.</p>
