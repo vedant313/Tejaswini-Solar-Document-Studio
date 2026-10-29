@@ -3,6 +3,7 @@ import CustomerRecords from "./CustomerRecords.jsx";
 import WorkCompletionPage from "./WorkCompletionPage.jsx";
 import { createWorker } from "tesseract.js";
 import jsPDF from "jspdf";
+import { PDFDocument } from "pdf-lib";
 import { generateModelAgreement } from "./lib/generate-modelaggrement.ts";
 import { generateWCR } from "./lib/generate-wcr.ts";
 import { generateDCR } from "./lib/generate-dcr.ts";
@@ -318,8 +319,37 @@ export default function App() {
     reader.readAsDataURL(blob);
     setPdfPreview(current => {
       if (current?.url) URL.revokeObjectURL(current.url);
-      return { url: URL.createObjectURL(blob), title, filename };
+      return { url: URL.createObjectURL(blob), title, filename, blob };
     });
+  };
+  const printModelAgreementInCorrectOrder = async () => {
+    if (!pdfPreview?.blob || pdfPreview.title !== "Model Agreement") return;
+    let printUrl = "";
+    try {
+      setStatus("Preparing Model Agreement for print order...");
+      const sourcePdf = await PDFDocument.load(await pdfPreview.blob.arrayBuffer());
+      const orderedPdf = await PDFDocument.create();
+      const pageIndexes = sourcePdf.getPageIndices().reverse();
+      const pages = await orderedPdf.copyPages(sourcePdf, pageIndexes);
+      pages.forEach(page => orderedPdf.addPage(page));
+      const bytes = await orderedPdf.save();
+      printUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const printWindow = window.open(printUrl, "_blank");
+      if (!printWindow) {
+        URL.revokeObjectURL(printUrl);
+        setStatus("Print window was blocked. Allow pop-ups for this website and try again.");
+        return;
+      }
+      printWindow.addEventListener("load", () => {
+        printWindow.focus();
+        printWindow.print();
+      }, { once: true });
+      setStatus("Model Agreement opened with print order adjusted. Other documents remain unchanged.");
+    } catch (error) {
+      console.error("Could not prepare print order:", error);
+      setStatus("Could not prepare the print-order copy. Use the normal PDF download instead.");
+      if (printUrl) URL.revokeObjectURL(printUrl);
+    }
   };
   const closePdfPreview = () => setPdfPreview(current => {
     if (current?.url) URL.revokeObjectURL(current.url);
@@ -516,7 +546,7 @@ export default function App() {
       </div>
       <div className="bottomActions"><button onClick={saveCustomerRecord}>▣ {currentRecordId ? "Update customer record" : "Save customer record"}</button><button className="secondary" onClick={()=>{setCurrentRecordId(null);setForm(initial);setOcrText("");setAadhaar(null);setAadhaarPreview("");setStatus("New customer form ready.");}}>＋ New customer</button><button className="secondary" onClick={saveFields}>Export form data (JSON)</button><button className="secondary" onClick={()=>{setForm(initial);setCurrentRecordId(null);setOcrText("");setAadhaar(null);setAadhaarPreview("");setStatus("Form cleared.");}}>Clear form</button></div>
     </section>
-    {pdfPreview && <div className="pdfModalBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)closePdfPreview();}}><section className="pdfModal" role="dialog" aria-modal="true" aria-labelledby="pdf-preview-title"><header className="pdfModalHead"><div><span className="eyebrow">DOCUMENT PREVIEW</span><h2 id="pdf-preview-title">{pdfPreview.title}</h2><p>Check the pages and details before downloading.</p></div><button className="secondary" onClick={closePdfPreview} aria-label="Close preview">✕ Close</button></header><iframe className="pdfFrame" src={pdfPreview.url} title={pdfPreview.title + " PDF preview"} /><div className="pdfModalActions"><a className="downloadLink" href={pdfPreview.url} download={pdfPreview.filename}>↓ Download PDF</a><button className="secondary" onClick={closePdfPreview}>Back to form</button></div></section></div>}
+    {pdfPreview && <div className="pdfModalBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)closePdfPreview();}}><section className="pdfModal" role="dialog" aria-modal="true" aria-labelledby="pdf-preview-title"><header className="pdfModalHead"><div><span className="eyebrow">DOCUMENT PREVIEW</span><h2 id="pdf-preview-title">{pdfPreview.title}</h2><p>Check the pages and details before downloading.</p></div><button className="secondary" onClick={closePdfPreview} aria-label="Close preview">✕ Close</button></header><iframe className="pdfFrame" src={pdfPreview.url} title={pdfPreview.title + " PDF preview"} /><div className="pdfModalActions">{pdfPreview.title === "Model Agreement" && <button className="secondary" onClick={printModelAgreementInCorrectOrder}>🖨 Print Model Agreement (correct order)</button>}<a className="downloadLink" href={pdfPreview.url} download={pdfPreview.filename}>↓ Download PDF</a><button className="secondary" onClick={closePdfPreview}>Back to form</button></div></section></div>}
     <footer><div className="footerBrand"><strong>TEJASWINI SALES</strong><span>Solar Document Studio</span></div><span className="footerCredit">Designed &amp; engineered by <strong>NEXSA TECHNOLOGIES</strong><br/>Verify all customer and equipment details before official submission.</span></footer>
   </main>;
 }
