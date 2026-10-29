@@ -505,7 +505,7 @@ export default function App() {
       </div>
     </details>
     <section className="card">
-      <div className="sectionHead"><div><span className="step">03</span><h2>Customer & portal details</h2></div><span className="muted">Review and correct OCR values.</span></div>
+      <div className="sectionHead"><div><span className="step">02</span><h2>Customer & portal details</h2></div><span className="muted">Review and correct OCR values.</span></div>
       <div className="grid two">
         <Labeled label="Customer / premises owner name">{input("consumerName","Full name")}</Labeled>
         <Labeled label="Consumer account number (CA No.)">{input("consumerNumber","Consumer number")}</Labeled>
