@@ -95,7 +95,7 @@ export default function ImageToPDF({ onBack }) {
     <section className="intro"><div><span className="introKicker">PDF UTILITIES</span><h2>Turn images into a PDF</h2><p>Select one or more images, arrange their order, and create a single PDF directly in your browser.</p></div><div className="introMeta"><span>Multiple images supported</span><span>Processed on your device</span></div></section>
     <section className="card"><div className="sectionHead"><div><span className="step">01</span><h2>Select images</h2></div><span className="muted">{images.length} image(s)</span></div>
       <label className="upload" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();addFiles(e.dataTransfer.files);}}><input ref={inputRef} type="file" multiple accept="image/*" onChange={e=>addFiles(e.target.files)}/><span className="uploadIcon">↑</span><strong>Choose images or drag them here</strong><small>JPG, JPEG, PNG, WebP, GIF, BMP and TIFF · select multiple files</small></label>
-      {images.length > 0 && <div className="imagePdfList">{images.map((file,i)=><div className="imagePdfItem" key={keyOf(file)}><img src={URL.createObjectURL(file)} alt="" onLoad={e=>{ /* preview thumbnail */ }}/><div className="imagePdfInfo"><strong>{file.name}</strong><small>{prettySize(file.size)}</small></div><div className="imagePdfActions"><button className="secondary" disabled={busy||i===0} onClick={()=>move(i,-1)} aria-label="Move image up">↑</button><button className="secondary" disabled={busy||i===images.length-1} onClick={()=>move(i,1)} aria-label="Move image down">↓</button><button className="secondary" disabled={busy} onClick={()=>remove(i)}>Remove</button></div></div>)}</div>}
+      {images.length > 0 && <div className="imagePdfList">{images.map((file,i)=><div className="imagePdfItem" key={keyOf(file)}><ImageThumbnail file={file}/><div className="imagePdfInfo"><strong>{file.name}</strong><small>{prettySize(file.size)}</small></div><div className="imagePdfActions"><button className="secondary" disabled={busy||i===0} onClick={()=>move(i,-1)} aria-label="Move image up">↑</button><button className="secondary" disabled={busy||i===images.length-1} onClick={()=>move(i,1)} aria-label="Move image down">↓</button><button className="secondary" disabled={busy} onClick={()=>remove(i)}>Remove</button></div></div>)}</div>}
       {images.length>0&&<div className="bottomActions"><button className="secondary" disabled={busy} onClick={()=>inputRef.current?.click()}>＋ Add more images</button><button className="secondary" disabled={busy} onClick={clear}>Clear all</button></div>}
     </section>
     <section className="card"><div className="sectionHead"><div><span className="step">02</span><h2>PDF settings</h2></div></div>
@@ -114,3 +114,13 @@ export default function ImageToPDF({ onBack }) {
   </main>;
 }
 function Labeled({label,children}){return <label className="field"><span>{label}</span>{children}</label>;}
+
+function ImageThumbnail({file}) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  return <img src={src} alt="" />;
+}
