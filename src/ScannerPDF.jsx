@@ -50,20 +50,29 @@ async function sourcePages(file, dpi, onProgress) {
 async function recognizePages(pages, onProgress) {
   const worker = await createWorker("eng");
   try {
-    const words = [];
+    const words = [], textParts = [];
     for (let i = 0; i < pages.length; i++) {
       onProgress("OCR text recognition: page " + (i + 1) + " of " + pages.length + "…");
       const result = await worker.recognize(pages[i].canvas);
       const c = pages[i].canvas;
+      textParts.push(result.data.text || "");
       words.push((result.data.words || []).filter(w => w.text?.trim() && w.bbox).map(w => ({
         text: w.text.trim(),
         x: w.bbox.x0 / c.width, y: w.bbox.y0 / c.height,
         w: (w.bbox.x1 - w.bbox.x0) / c.width, h: (w.bbox.y1 - w.bbox.y0) / c.height
       })));
     }
-    return words;
+    return { words, text: textParts.join("\n").toLowerCase() };
   } finally { await worker.terminate(); }
 }
+function detectDocumentType(text) {
+  const t = (text || "").toLowerCase();
+  if (/work completion report|work completion certificate|completion of work|installation completion/.test(t)) return "wcr";
+  if (/annexure\s*[-–:]?\s*i|annexure-i|dcr certificate|detailed project report|module serial number|solar photovoltaic modules/.test(t)) return "annexure";
+  if (/model agreement|agreement between|consumer.*vendor|vendor.*consumer|terms and conditions/.test(t)) return "model";
+  return "unknown";
+}
+function targetForDocument(type) { return type === "model" ? "2mb" : type === "wcr" || type === "annexure" ? "299kb" : "custom"; }
 async function makePdf(pages, ocrWords, scale, quality, searchable, onProgress) {
   let out = new jsPDF({ orientation: "p", unit: "pt", format: "a4", compress: true, putOnlyUsedFonts: true });
   for (let i = 0; i < pages.length; i++) {
@@ -95,7 +104,9 @@ export default function ScannerPDF({ onBack }) {
   const [files, setFiles] = useState([]);
   const [dpi, setDpi] = useState("200");
   const [colorMode, setColorMode] = useState("color");
-  const [target, setTarget] = useState("2mb");
+  const [target, setTarget] = useState("auto");
+  const [documentType, setDocumentType] = useState("auto");
+  const [scannerReady, setScannerReady] = useState(false);
   const [customKB, setCustomKB] = useState("1000");
   const [quality, setQuality] = useState(65);
   const [searchable, setSearchable] = useState(true);
@@ -128,25 +139,28 @@ export default function ScannerPDF({ onBack }) {
         pages.push(...next);
       }
       if (!pages.length) throw new Error("No pages were found in the selected files.");
-      const ocrWords = searchable ? await recognizePages(pages, setStatus) : [];
-      let blob, chosen = { scale: 1, quality: quality / 100 };
-      const attempts = target === "299kb"
+      const ocrResult = searchable ? await recognizePages(pages, setStatus) : { words: [], text: "" };
+      const detected = documentType === "auto" ? detectDocumentType(ocrResult.text) : documentType;
+      const effectiveTarget = target === "auto" ? targetForDocument(detected) : target;
+      let blob;
+      const attempts = effectiveTarget === "299kb"
         ? [{ scale: 0.55, quality: 0.48 }, { scale: 0.42, quality: 0.36 }, { scale: 0.32, quality: 0.27 }, { scale: 0.24, quality: 0.2 }, { scale: 0.17, quality: 0.14 }]
-        : target === "2mb"
+        : effectiveTarget === "2mb"
           ? [{ scale: 1, quality: 0.68 }, { scale: 0.82, quality: 0.55 }, { scale: 0.65, quality: 0.42 }, { scale: 0.5, quality: 0.3 }, { scale: 0.38, quality: 0.22 }]
-          : target === "custom"
-          ? [{ scale: 1, quality: quality / 100 }, { scale: 0.82, quality: Math.max(0.25, quality / 100 - 0.12) }, { scale: 0.65, quality: Math.max(0.2, quality / 100 - 0.22) }, { scale: 0.5, quality: Math.max(0.16, quality / 100 - 0.32) }, { scale: 0.38, quality: 0.18 }]
-          : [{ scale: 1, quality: quality / 100 }];
+          : effectiveTarget === "custom"
+            ? [{ scale: 1, quality: quality / 100 }, { scale: 0.82, quality: Math.max(0.25, quality / 100 - 0.12) }, { scale: 0.65, quality: Math.max(0.2, quality / 100 - 0.22) }, { scale: 0.5, quality: Math.max(0.16, quality / 100 - 0.32) }, { scale: 0.38, quality: 0.18 }]
+            : [{ scale: 1, quality: quality / 100 }];
+      const limit = effectiveTarget === "299kb" ? 299 * KB : effectiveTarget === "2mb" ? 2 * MB : Number(customKB) * KB;
       for (let i = 0; i < attempts.length; i++) {
-        chosen = attempts[i];
-        blob = await makePdf(pages, ocrWords, chosen.scale, chosen.quality, searchable, setStatus);
-        const limit = target === "299kb" ? 299 * KB : target === "2mb" ? 2 * MB : Number(customKB) * KB;
-        if (target === "custom" ? blob.size <= limit : target !== "quality" && blob.size <= limit) break;
+        const chosen = attempts[i];
+        blob = await makePdf(pages, ocrResult.words, chosen.scale, chosen.quality, searchable, setStatus);
+        if (effectiveTarget === "quality" || blob.size <= limit) break;
       }
-      const name = (files.length === 1 ? safeName(files[0].name) : "canon-scan-" + new Date().toISOString().slice(0, 10)) + "-scanned.pdf";
-      const tooLarge = (target === "299kb" && blob.size > 299 * KB) || (target === "2mb" && blob.size > 2 * MB) || (target === "custom" && blob.size > Number(customKB) * KB);
-      setResult({ blob, url: URL.createObjectURL(blob), name, size: blob.size, pages: pages.length, tooLarge, searchable });
-      setStatus("Finished. " + pages.length + " page(s) included" + (tooLarge ? "; selected size target was not reached." : "."));
+      const typeName = { model: "model-agreement", wcr: "work-completion-report", annexure: "annexure", unknown: "document" }[detected] || "document";
+      const name = (files.length === 1 ? safeName(files[0].name) : "canon-scan-" + new Date().toISOString().slice(0, 10)) + "-" + typeName + ".pdf";
+      const tooLarge = effectiveTarget !== "quality" && blob.size > limit;
+      setResult({ blob, url: URL.createObjectURL(blob), name, size: blob.size, pages: pages.length, tooLarge, searchable, detected, effectiveTarget });
+      setStatus("Finished. Detected: " + (typeName.replace(/-/g, " ")) + ". Target: " + (effectiveTarget === "299kb" ? "under 300 KB" : effectiveTarget === "2mb" ? "under 2 MB" : effectiveTarget === "quality" ? "high quality" : customKB + " KB") + (tooLarge ? "; target not reached, please review quality." : "."));
     } catch (error) {
       console.error(error); setStatus("Could not finish scanning PDF: " + (error?.message || "Unknown error"));
     } finally {
@@ -155,7 +169,41 @@ export default function ScannerPDF({ onBack }) {
     }
   };
 
-  const openWindowsScanHelp = () => setStatus("On Windows, open Start → Windows Scan (or Canon IJ Scan Utility), choose your Canon scanner and set DPI/color mode, scan pages to JPG or PDF, then select those saved files here. The website cannot start a USB scan directly without a separately installed Windows helper.");
+  const connectScanner = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:8765/status", { cache: "no-store" });
+      if (!response.ok) throw new Error("Bridge response " + response.status);
+      const data = await response.json();
+      setScannerReady(Boolean(data.ready));
+      setStatus(data.ready ? "Canon scanner bridge is connected. You can scan directly from this website." : "Scanner bridge is not ready.");
+    } catch {
+      setScannerReady(false);
+      setStatus("Scanner helper is not running. Start TejaswiniScannerBridge.exe on this Windows PC, then click Connect again.");
+    }
+  };
+  const scanFromWebsite = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      setStatus("Sending scan request to the local Canon/WIA scanner…");
+      const response = await fetch("http://127.0.0.1:8765/scan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dpi: Number(dpi), colorMode })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Scanner request failed");
+      const blob = await (await fetch(data.dataUrl)).blob();
+      const file = new File([blob], data.fileName || ("canon-scan-" + Date.now() + ".jpg"), { type: "image/jpeg", lastModified: Date.now() });
+      setFiles(prev => [...prev, file]);
+      setResult(null);
+      setStatus("Scan received in the website. Scan the next page if needed, then choose document type/size and create PDF.");
+      setScannerReady(true);
+    } catch (error) {
+      setScannerReady(false);
+      setStatus("Could not scan directly: " + (error?.message || "Start the Windows scanner helper and confirm WIA support."));
+    } finally { setBusy(false); }
+  };
+  const openWindowsScanHelp = () => setStatus("For direct website scanning, the local Tejaswini Windows Scanner Bridge must be running and your Canon driver must support WIA. The bridge source and setup notes are in the project's windows-scanner-bridge folder.");
   return <main className="shell">
     <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Scanner &amp; PDF</h1><p className="muted">Prepare scanned documents, optimize file size and add searchable OCR text.</p></div><div className="headerActions"><button className="secondary" onClick={onBack}>← Back to Document Studio</button></div></header>
     <section className="intro"><div><span className="introKicker">CANON USB SCANNER WORKFLOW</span><h2>Scan, optimize and save</h2><p>Scan with Canon’s Windows software, then combine pages, add OCR text and target the PDF size required for your solar paperwork.</p></div><div className="introMeta"><span>PDF or image input</span><span>OCR: English</span><span>Processed locally in browser</span></div></section>
