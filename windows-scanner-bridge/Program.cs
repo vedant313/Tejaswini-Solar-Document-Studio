@@ -54,7 +54,8 @@ internal static class Program
             var opts = Json.Deserialize<Dictionary<string, object>>(body) ?? new Dictionary<string, object>();
             int dpi = opts.ContainsKey("dpi") ? Math.Max(75, Math.Min(600, Convert.ToInt32(opts["dpi"]))) : 200;
             string mode = opts.ContainsKey("colorMode") ? Convert.ToString(opts["colorMode"]) : "grayscale";
-            byte[] image = ScanOne(dpi, mode);
+            string deviceId = opts.ContainsKey("deviceId") ? Convert.ToString(opts["deviceId"]) : "";
+            byte[] image = ScanOne(dpi, mode, deviceId);
             Reply(c.Response, 200, new { fileName = "canon-scan-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".jpg", mimeType = "image/jpeg", dataUrl = "data:image/jpeg;base64," + Convert.ToBase64String(image) });
             return;
         }
@@ -88,7 +89,7 @@ internal static class Program
         return result;
     }
 
-    private static byte[] ScanOne(int dpi, string mode)
+    private static byte[] ScanOne(int dpi, string mode, string deviceId)
     {
         dynamic manager = CreateWiaManager();
         dynamic infos = manager.DeviceInfos;
@@ -96,9 +97,16 @@ internal static class Program
         for (int i = 1; i <= (int)infos.Count; i++)
         {
             dynamic info = infos.Item(i);
-            if (Convert.ToInt32(info.Type) == 1) { chosen = info; break; }
+            if (Convert.ToInt32(info.Type) != 1) continue;
+            string currentId = "";
+            try { currentId = Convert.ToString(info.DeviceID); } catch { }
+            if (!String.IsNullOrWhiteSpace(deviceId) && !String.Equals(currentId, deviceId, StringComparison.OrdinalIgnoreCase)) continue;
+            chosen = info;
+            break;
         }
-        if (chosen == null) throw new InvalidOperationException("Windows WIA did not find a scanner. Install the Canon scanner driver and check USB connection.");
+        if (chosen == null) throw new InvalidOperationException(String.IsNullOrWhiteSpace(deviceId)
+            ? "Windows WIA did not find a scanner. Install the Canon scanner driver and check USB connection."
+            : "The selected scanner is no longer available. Click Connect scanner to refresh the device list.");
         dynamic device = chosen.Connect();
         dynamic item = device.Items.Item(1);
         SetProperty(item.Properties, 6147, dpi);
