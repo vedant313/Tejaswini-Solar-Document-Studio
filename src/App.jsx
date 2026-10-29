@@ -523,7 +523,7 @@ export default function App() {
       </div>
     </section>
     <section className="card">
-      <div className="sectionHead"><div><span className="step">04</span><h2>Solar equipment</h2></div><span className="muted">Enter the equipment details as per the installed system.</span></div>
+      <div className="sectionHead"><div><span className="step">03</span><h2>Solar equipment</h2></div><span className="muted">Enter the equipment details as per the installed system.</span></div>
       <div className="grid two">
         <Labeled label="Panel manufacturer"><select value={form.moduleManufacturer} onChange={e=>update("moduleManufacturer",e.target.value)}><option>Waaree</option><option>Mundra Solar</option><option>Tata Power Solar</option><option>Other</option></select></Labeled>
         {form.moduleManufacturer==="Other" && <Labeled label="Custom panel brand">{input("customModuleManufacturer","Enter panel brand")}</Labeled>}
@@ -547,7 +547,7 @@ export default function App() {
       </div>
     </details>
     <section className="card">
-      <div className="sectionHead"><div><span className="step">06</span><h2>Generate document drafts</h2></div></div>
+      <div className="sectionHead"><div><span className="step">04</span><h2>Generate document drafts</h2></div></div>
       <p className="muted">These PDFs use the supplied Annexure-I, WCR and Model Agreement pages as templates. Review all filled values, placement and signature areas before official submission.</p>
       <div className="docGrid">
         <article className="doc"><span className="docNo">A</span><h3>Annexure</h3><p>Customer, system and vendor summary.</p><button onClick={()=>generatePdf("annexure")}>↓ Download PDF</button></article>
