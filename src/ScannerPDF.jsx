@@ -23,7 +23,7 @@ async function sourcePages(file, dpi, onProgress) {
   const pages = [];
   if (isImage(file)) {
     const img = await loadImage(file), canvas = document.createElement("canvas");
-    const factor = Math.min(2, Math.max(1, dpi / 150));
+    const factor = 1; // preserve the pixels returned by the scanner/image file
     canvas.width = Math.max(1, Math.round(img.naturalWidth * factor));
     canvas.height = Math.max(1, Math.round(img.naturalHeight * factor));
     const ctx = canvas.getContext("2d", { alpha: false });
@@ -139,7 +139,7 @@ export default function ScannerPDF({ onBack }) {
         pages.push(...next);
       }
       if (!pages.length) throw new Error("No pages were found in the selected files.");
-      const ocrResult = searchable ? await recognizePages(pages, setStatus) : { words: [], text: "" };
+      const needsOcr = searchable || documentType === "auto" || target === "auto";\n      const ocrResult = needsOcr ? await recognizePages(pages, setStatus) : { words: [], text: "" };
       const detected = documentType === "auto" ? detectDocumentType(ocrResult.text) : documentType;
       const effectiveTarget = target === "auto" ? targetForDocument(detected) : target;
       let blob;
