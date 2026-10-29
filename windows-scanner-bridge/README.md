@@ -1,23 +1,35 @@
 # Tejaswini Scanner Bridge (Windows)
-This optional local helper allows the website to request a single scan through the Windows Image Acquisition (WIA) driver. Keep it local; it binds only to 127.0.0.1.
+This optional local helper lets the Tejaswini Solar Document Studio request a scan from Windows Image Acquisition (WIA). It binds only to `127.0.0.1`; it is not an internet-facing service.
 
 ## Requirements
 - Windows 10
 - Canon scanner driver installed and scanner connected by USB
-- .NET Framework 4.8 developer/build tools to compile this project
-- The Canon model/driver must expose WIA support. Some Canon devices expose only TWAIN; those need a TWAIN-specific bridge instead.
+- .NET Framework 4.8 developer/build tools / Visual Studio Build Tools
+- The Canon model and installed driver must expose WIA. Some models expose only TWAIN; those need a TWAIN-specific adapter.
 
-## Build
-Open a Developer Command Prompt for Visual Studio and run:
+## Build the helper
+Open a **Developer Command Prompt for Visual Studio** in this folder and run:
 ```bat
 msbuild TejaswiniScannerBridge.csproj /p:Configuration=Release
 ```
-Run `bin\Release\TejaswiniScannerBridge.exe` and keep its window open. If Windows Firewall prompts, do not allow public network access; the helper only binds to loopback.
+Then run the generated `bin\Release\TejaswiniScannerBridge.exe` and keep its console window open while using the website. The website's **Connect scanner** button should report that the local bridge is available.
+
+If Windows Firewall asks, do not allow public network access. This helper should remain local to your PC.
+
+## Website workflow
+1. Start the bridge on the same Windows PC where the Canon USB scanner is connected.
+2. Open the deployed Tejaswini Solar Document Studio in the browser.
+3. Open **Scanner & PDF**, choose DPI/color mode and click **Connect scanner**.
+4. Click **Scan page now**. Each scanned page is automatically added to the page/file list. Click again for each additional page.
+5. Choose automatic detection or manually select Model Agreement, Work Completion Report, Annexure/DCR, or Other. Choose an automatic or custom size target and create the PDF.
 
 ## Endpoints
-- GET http://127.0.0.1:8765/status
-- GET http://127.0.0.1:8765/devices
-- POST http://127.0.0.1:8765/scan with JSON: {"dpi":200,"colorMode":"grayscale"}
+- GET `http://127.0.0.1:8765/status`
+- GET `http://127.0.0.1:8765/devices`
+- POST `http://127.0.0.1:8765/scan` with JSON: `{"dpi":200,"colorMode":"grayscale"}`
 
-## Important
-This helper is source code and has not been compiled or tested against the user's Canon device. Device-specific WIA properties can vary. Scans are returned to the browser as JPEG data and are not uploaded to a server by the helper. Do not expose this service to the LAN or internet.
+## Limitations and privacy
+- This is source code, not a precompiled installer; it has not yet been built or tested against the user's exact Canon model.
+- A scanner driver may expose only TWAIN or use different WIA properties; the bridge may need model-specific changes.
+- This version scans one page per click. Pages are returned to the browser as JPEGs; the bridge does not upload them to a server.
+- OCR auto-detection is best-effort. Verify the detected document type and PDF readability before submitting official solar paperwork.
