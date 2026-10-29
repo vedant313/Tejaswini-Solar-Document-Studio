@@ -33,3 +33,11 @@ If Windows Firewall asks, do not allow public network access. This helper should
 - A scanner driver may expose only TWAIN or use different WIA properties; the bridge may need model-specific changes.
 - This version scans one page per click. Pages are returned to the browser as JPEGs; the bridge does not upload them to a server.
 - OCR auto-detection is best-effort. Verify the detected document type and PDF readability before submitting official solar paperwork.
+
+## Download a prebuilt helper (after the build workflow succeeds)
+1. Open the repository's **Actions** tab.
+2. Open the latest **Build Windows Scanner Bridge** run.
+3. Under **Artifacts**, download `TejaswiniScannerBridge-Windows` and extract it.
+4. Run `TejaswiniScannerBridge.exe` and keep the console window open while using the website.
+
+The first workflow run is triggered when this workflow is merged to `main`. The artifact is temporary (14-day retention). It is not a signed installer, and Windows may show a security warning because it is an internally built executable. Only run it if you trust the repository and have reviewed the source.
