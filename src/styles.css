@@ -69,3 +69,10 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .scannerCheckbox input{margin-top:3px;accent-color:#d5a64b;width:16px;height:16px;flex:0 0 auto}
 .scannerCheckbox span{display:flex;flex-direction:column;gap:6px}.scannerCheckbox strong{font-size:12px}.scannerCheckbox small{font-size:11px;color:#a3a49d;line-height:1.55}
 @media(max-width:760px){.scannerGuide{flex-direction:column}.scannerGuide button{width:100%}}
+
+/* Direct local scanner controls and automatic document classification */
+.scannerButtons{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.scannerDocType{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.scannerDocType small{font-size:11px;color:#a3a49d;line-height:1.5}
+.compressionStats{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px}
+@media(max-width:760px){.scannerButtons{width:100%;justify-content:stretch}.scannerButtons button{flex:1}.compressionStats{grid-template-columns:repeat(2,minmax(0,1fr))}}
