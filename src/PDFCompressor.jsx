@@ -4,10 +4,11 @@ import JSZip from "jszip";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url).toString();
 const MB=1024*1024;
+const KB=1024;
 const prettySize=n=>n>=MB?(n/MB).toFixed(2)+" MB":(n/1024).toFixed(1)+" KB";
 const safeName=name=>name.replace(/\.pdf$/i,"").replace(/[\\/:*?"<>|]/g,"_");
 export default function PDFCompressor({onBack}){
- const [files,setFiles]=useState([]),[mode,setMode]=useState("2mb"),[quality,setQuality]=useState(65),[scale,setScale]=useState("1"),[busy,setBusy]=useState(false),[progress,setProgress]=useState(""),[results,setResults]=useState([]);
+ const [files,setFiles]=useState([]),[mode,setMode]=useState("299kb"),[quality,setQuality]=useState(65),[scale,setScale]=useState("1"),[busy,setBusy]=useState(false),[progress,setProgress]=useState(""),[results,setResults]=useState([]);
  const inputRef=useRef(null);
  const chooseFiles=list=>{
   if(!list||!list.length)return;
@@ -41,15 +42,15 @@ export default function PDFCompressor({onBack}){
    let blob,chosen={scale:Number(scale),quality:quality/100};
    const render=async(s,q)=>buildCompressedPdf(pdf,s,q,(page,pages)=>setProgress("PDF "+(index+1)+"/"+total+" — "+file.name+" — page "+page+"/"+pages));
    if(mode==="manual")blob=await render(chosen.scale,chosen.quality);
-   else if(mode==="299mb"){
-    blob=await render(1.25,0.76);chosen={scale:1.25,quality:0.76};
-    if(blob.size>=299*MB){blob=await render(0.8,0.55);chosen={scale:0.8,quality:0.55};}
+   else if(mode==="299kb"){
+    const attempts=[{scale:0.65,quality:0.45},{scale:0.5,quality:0.35},{scale:0.4,quality:0.28},{scale:0.3,quality:0.22},{scale:0.22,quality:0.16},{scale:0.16,quality:0.12}];
+    for(const attempt of attempts){blob=await render(attempt.scale,attempt.quality);chosen=attempt;if(blob.size<=299*KB)break;}
    }else{
     const attempts=[{scale:1.1,quality:0.68},{scale:0.9,quality:0.58},{scale:0.75,quality:0.48},{scale:0.6,quality:0.38},{scale:0.45,quality:0.28},{scale:0.35,quality:0.2}];
     for(const attempt of attempts){blob=await render(attempt.scale,attempt.quality);chosen=attempt;if(blob.size<=2*MB)break;}
    }
    const name=safeName(file.name)+"-compressed.pdf";
-   return {name,blob,url:URL.createObjectURL(blob),size:blob.size,originalSize:file.size,scale:chosen.scale,quality:chosen.quality,tooLarge:(mode==="2mb"&&blob.size>2*MB)||(mode==="299mb"&&blob.size>299*MB)};
+   return {name,blob,url:URL.createObjectURL(blob),size:blob.size,originalSize:file.size,scale:chosen.scale,quality:chosen.quality,tooLarge:(mode==="2mb"&&blob.size>2*MB)||(mode==="299kb"&&blob.size>299*KB)};
   }finally{try{await pdf.destroy();}catch{}}
  }
  const compress=async()=>{
@@ -86,7 +87,7 @@ export default function PDFCompressor({onBack}){
   </section>
   <section className="card"><div className="sectionHead"><div><span className="step">02</span><h2>Compression mode</h2></div></div>
    <div className="compressModes">
-    <button className={mode==="299mb"?"compressMode selected":"compressMode"} onClick={()=>setMode("299mb")}><strong>Under 299 MB</strong><span>Balanced compression</span><small>Try to bring each PDF under 299 MB</small></button>
+    <button className={mode==="299kb"?"compressMode selected":"compressMode"} onClick={()=>setMode("299kb")}><strong>Under 299 KB</strong><span>Maximum compression</span><small>Try to bring each PDF under 299 KB; quality may drop</small></button>
     <button className={mode==="2mb"?"compressMode selected":"compressMode"} onClick={()=>setMode("2mb")}><strong>Under 2 MB</strong><span>Smallest practical output</span><small>May reduce image/text sharpness</small></button>
     <button className={mode==="manual"?"compressMode selected":"compressMode"} onClick={()=>setMode("manual")}><strong>Manual</strong><span>Choose quality yourself</span><small>Adjust resolution and JPEG quality</small></button>
    </div>
