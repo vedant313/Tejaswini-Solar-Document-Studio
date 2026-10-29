@@ -76,3 +76,79 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .scannerDocType small{font-size:11px;color:#a3a49d;line-height:1.5}
 .compressionStats{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px}
 @media(max-width:760px){.scannerButtons{width:100%;justify-content:stretch}.scannerButtons button{flex:1}.compressionStats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* Cleaner home dashboard: less visual noise, clearer hierarchy */
+.homeShell{max-width:1120px;padding-top:22px}
+.homeShell .top{align-items:center;padding:8px 0 18px;gap:14px}
+.homeShell .brandTitle{min-width:0}
+.homeShell .brandTitle h1{font-size:25px}
+.homeShell .brandTitle .muted{margin-top:4px}
+.homeShell .brandCredit{gap:10px}
+.homeShell .brandCredit .builtBy{font-size:9px;letter-spacing:1.1px;color:#93948b}
+.homeShell .recordsHeaderButton{display:inline-flex;align-items:center;gap:10px;min-height:38px;padding:9px 12px}
+.homeShell .recordsHeaderButton span{display:inline-grid;place-items:center;min-width:21px;height:21px;padding:0 5px;border:1px solid #5a4b2e;border-radius:4px;color:#e2c16f;background:#211e16;font-size:10px}
+.toolNav{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:16px 0 7px;padding:10px 0 13px;border-bottom:1px solid #2a2b26}
+.toolNavIntro{display:flex;flex-direction:column;gap:4px;flex:0 0 auto}
+.toolNavIntro>span{font-size:9px;font-weight:800;letter-spacing:1.5px;color:#c2a15e}
+.toolNavIntro small{font-size:11px;color:#85867d}
+.toolNavItems{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.toolNavItems button{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:8px 10px;background:transparent;border:1px solid #34352e;border-radius:6px;color:#d8d9d2;font-size:11px;font-weight:600;white-space:nowrap}
+.toolNavItems button:hover{border-color:#8e7440;background:#201e17;color:#f0d591}
+.toolGlyph{display:grid;place-items:center;width:21px;height:21px;border-radius:4px;border:1px solid #4d432d;background:#211e16;color:#dfbc68;font-size:10px;font-weight:800}
+.homeShell .introClean{margin:7px 0 15px;padding:18px 2px 17px;border:0;border-bottom:1px solid #2a2b26;border-radius:0;background:transparent;box-shadow:none}
+.homeShell .introClean .introKicker{margin-bottom:7px}
+.homeShell .introClean h2{font-size:24px;margin-bottom:5px}
+.homeShell .introClean p{max-width:720px}
+.homeShell>.card{margin:11px 0;padding:21px 22px;border-color:#2e2f29;border-radius:8px;box-shadow:none}
+.homeShell>.card:hover{border-color:#45463c}
+.homeShell .sectionHead{margin-bottom:16px;padding-bottom:12px}
+.homeShell .sectionHead h2{font-size:14px}
+.homeShell .sectionHead .muted{max-width:350px;text-align:right}
+.homeShell .field{gap:6px;font-size:11px}
+.homeShell .field input,.homeShell .field select,.homeShell .field textarea{min-height:39px;padding:10px 11px;border-radius:6px}
+.homeShell .grid{gap:13px 16px}
+.homeShell .upload{min-height:112px;gap:6px;border-radius:8px}
+.homeShell .uploadIcon{width:28px;height:28px}
+.homeShell .notice{margin:10px 0;padding:11px 13px;border-radius:6px}
+.settingsCard,.optionalCard{padding:0!important;overflow:hidden}
+.settingsSummary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 19px;cursor:pointer;list-style:none}
+.settingsSummary::-webkit-details-marker{display:none}
+.settingsSummary::marker{content:""}
+.settingsSummary>span:first-child{display:flex;flex-direction:column;gap:5px;min-width:0}
+.settingsSummary strong{font-size:12px;font-weight:700;color:#dedfd8}
+.settingsSummary small{font-size:11px;font-weight:400;color:#92938a;line-height:1.5}
+.settingsToggle{display:grid;place-items:center;flex:0 0 27px;width:27px;height:27px;border:1px solid #45463a;border-radius:5px;color:#d6b666;font-size:15px;transition:transform .15s ease}
+.settingsCard[open] .settingsToggle,.optionalCard[open] .settingsToggle{transform:rotate(45deg)}
+.settingsBody{padding:0 19px 18px;border-top:1px solid #292a25}
+.settingsBody>.grid{padding-top:15px}
+.settingsBody .addPhone{margin-top:12px}
+.settingsBody .upload{margin-top:15px}
+.homeShell .docGrid{gap:10px;margin-top:15px}
+.homeShell .doc{padding:14px;border-color:#34352e;border-radius:7px;min-height:170px;background:#141511;box-shadow:none}
+.homeShell .doc:hover{transform:none;border-color:#7b663c;background:#181811}
+.homeShell .doc h3{font-size:13px;margin:11px 0 5px}
+.homeShell .doc p{font-size:11px;min-height:31px}
+.homeShell .doc button{font-size:11px;padding:9px 10px}
+.homeShell .bottomActions{margin-top:14px;padding-top:13px;gap:8px}
+.homeShell .bottomActions button{padding:9px 11px;font-size:11px}
+.homeShell footer{margin-top:18px}
+@media(max-width:760px){
+ .homeShell{padding:14px 12px 28px}
+ .homeShell .top{align-items:flex-start;flex-wrap:wrap}
+ .homeShell .brandTitle h1{font-size:21px}
+ .homeShell .brandCredit{margin-left:56px;width:calc(100% - 56px);align-items:flex-start;flex-direction:row;justify-content:space-between;flex-wrap:wrap}
+ .homeShell .recordsHeaderButton{font-size:11px}
+ .toolNav{align-items:flex-start;flex-direction:column;gap:10px;padding:12px 0}
+ .toolNavIntro{flex-direction:row;align-items:baseline;gap:9px}
+ .toolNavItems{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:7px}
+ .toolNavItems button{justify-content:flex-start;white-space:normal;min-height:43px}
+ .homeShell .introClean{padding:15px 1px}
+ .homeShell .introClean h2{font-size:21px}
+ .homeShell>.card{padding:16px}
+ .homeShell .sectionHead{align-items:flex-start}
+ .homeShell .sectionHead .muted{text-align:left;max-width:none}
+ .settingsSummary{padding:14px}
+ .settingsBody{padding:0 14px 15px}
+}
+@media(prefers-reduced-motion:reduce){.settingsToggle{transition:none!important}}
