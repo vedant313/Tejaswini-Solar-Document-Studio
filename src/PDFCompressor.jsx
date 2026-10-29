@@ -26,7 +26,7 @@ export default function PDFCompressor({ onBack }) {
   const compress=async()=>{
     if(!file||busy)return;setBusy(true);setResult(null);let pdf;
     try{
-      if(file.size>299*MB){setProgress("This file is over 299 MB. Try a smaller source PDF first; very large files may exceed browser memory.");return;}
+      if(file.size>1024*MB){setProgress("This PDF is over 1 GB and may exceed browser memory. Try splitting it into smaller PDFs first.");return;}
       setProgress("Opening PDF locally in your browser…");
       pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
       let blob,chosen={scale:Number(scale),quality:quality/100};
