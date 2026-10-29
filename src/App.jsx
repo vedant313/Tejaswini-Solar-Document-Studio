@@ -3,6 +3,7 @@ import CustomerRecords from "./CustomerRecords.jsx";
 import WorkCompletionPage from "./WorkCompletionPage.jsx";
 import { createWorker } from "tesseract.js";
 import jsPDF from "jspdf";
+import { PDFDocument } from "pdf-lib";
 import { generateModelAgreement } from "./lib/generate-modelaggrement.ts";
 import { generateWCR } from "./lib/generate-wcr.ts";
 import { generateDCR } from "./lib/generate-dcr.ts";
@@ -318,8 +319,37 @@ export default function App() {
     reader.readAsDataURL(blob);
     setPdfPreview(current => {
       if (current?.url) URL.revokeObjectURL(current.url);
-      return { url: URL.createObjectURL(blob), title, filename };
+      return { url: URL.createObjectURL(blob), title, filename, blob };
     });
+  };
+  const printModelAgreementInCorrectOrder = async () => {
+    if (!pdfPreview?.blob || pdfPreview.title !== "Model Agreement") return;
+    let printUrl = "";
+    try {
+      setStatus("Preparing Model Agreement for print order...");
+      const sourcePdf = await PDFDocument.load(await pdfPreview.blob.arrayBuffer());
+      const orderedPdf = await PDFDocument.create();
+      const pageIndexes = sourcePdf.getPageIndices().reverse();
+      const pages = await orderedPdf.copyPages(sourcePdf, pageIndexes);
+      pages.forEach(page => orderedPdf.addPage(page));
+      const bytes = await orderedPdf.save();
+      printUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const printWindow = window.open(printUrl, "_blank");
+      if (!printWindow) {
+        URL.revokeObjectURL(printUrl);
+        setStatus("Print window was blocked. Allow pop-ups for this website and try again.");
+        return;
+      }
+      printWindow.addEventListener("load", () => {
+        printWindow.focus();
+        printWindow.print();
+      }, { once: true });
+      setStatus("Model Agreement opened with print order adjusted. Other documents remain unchanged.");
+    } catch (error) {
+      console.error("Could not prepare print order:", error);
+      setStatus("Could not prepare the print-order copy. Use the normal PDF download instead.");
+      if (printUrl) URL.revokeObjectURL(printUrl);
+    }
   };
   const closePdfPreview = () => setPdfPreview(current => {
     if (current?.url) URL.revokeObjectURL(current.url);
