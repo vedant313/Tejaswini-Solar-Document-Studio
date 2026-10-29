@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import CustomerRecords from "./CustomerRecords.jsx";
 import WorkCompletionPage from "./WorkCompletionPage.jsx";
 import { createWorker } from "tesseract.js";
 import jsPDF from "jspdf";
@@ -200,6 +201,29 @@ function textValue(v) { return v == null ? "" : String(v); }
 
 export default function App() {
   const [activePage,setActivePage] = useState("documents");
+  const [records,setRecords] = useState(() => { try { return JSON.parse(localStorage.getItem("tejaswini-customer-records-v1") || "[]"); } catch { return []; } });
+  const [currentRecordId,setCurrentRecordId] = useState(null);
+  useEffect(() => { try { localStorage.setItem("tejaswini-customer-records-v1", JSON.stringify(records)); } catch { setStatus("Storage is full. Export records and remove old saved PDFs to continue."); } }, [records]);
+  const saveCustomerRecord = () => {
+    const name = String(form.consumerName || "").trim();
+    const ca = String(form.consumerNumber || "").trim();
+    if (!name && !ca) { setStatus("Enter at least customer name or CA number before saving."); return; }
+    const now = new Date().toISOString();
+    const id = currentRecordId || (ca ? records.find(r => r.consumerNumber === ca)?.id : null) || `cust-${Date.now()}`;
+    const existing = records.find(r => r.id === id);
+    const record = { ...(existing || {}), id, ...form, selectedCompanyMobile:selectedPhone, documents:existing?.documents || [], rtsPrepared:existing?.rtsPrepared || false, createdAt:existing?.createdAt || now, updatedAt:now };
+    setRecords(prev => [record, ...prev.filter(r => r.id !== id)]);
+    setCurrentRecordId(id); setStatus(existing ? "Customer record updated." : "Customer record saved.");
+  };
+  const loadCustomerRecord = (record) => {
+    setForm(p => ({...initial, ...record}));
+    if (record.selectedCompanyMobile) setSelectedPhone(record.selectedCompanyMobile);
+    setCurrentRecordId(record.id); setActivePage("documents"); setStatus(`Editing record: ${record.consumerName || record.consumerNumber}. Make changes and press Save customer record.`);
+    window.scrollTo({top:0,behavior:"smooth"});
+  };
+  const toggleRtsPrepared = (id) => setRecords(prev => prev.map(r => r.id === id ? {...r,rtsPrepared:!r.rtsPrepared,updatedAt:new Date().toISOString()} : r));
+  const deleteCustomerRecord = (id) => { if (window.confirm("Delete this customer record and its saved PDFs?")) { setRecords(prev=>prev.filter(r=>r.id!==id)); if(currentRecordId===id)setCurrentRecordId(null); } };
+  const exportRecords = () => { const blob=new Blob([JSON.stringify(records,null,2)],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="tejaswini-customer-records.json"; a.click(); URL.revokeObjectURL(url); };
   const [form,setForm] = useState(initial);
   const [status,setStatus] = useState("");
   const [pdfPreview,setPdfPreview] = useState(null);
@@ -280,6 +304,18 @@ export default function App() {
   };
   const showPdfPreview = (blob, title, filename) => {
     if (!blob) throw new Error("The PDF could not be created.");
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = String(reader.result || "");
+      setRecords(prev => {
+        const ca = String(form.consumerNumber || "").trim();
+        const target = prev.find(r => r.id === currentRecordId) || (ca ? prev.find(r => r.consumerNumber === ca) : null);
+        if (!target) return prev;
+        const doc = { id: `doc-${Date.now()}`, title, filename, dataUrl, savedAt: new Date().toISOString() };
+        return prev.map(r => r.id === target.id ? { ...r, documents: [...(r.documents || []).filter(d => d.filename !== filename), doc], updatedAt: new Date().toISOString() } : r);
+      });
+    };
+    reader.readAsDataURL(blob);
     setPdfPreview(current => {
       if (current?.url) URL.revokeObjectURL(current.url);
       return { url: URL.createObjectURL(blob), title, filename };
@@ -410,9 +446,10 @@ export default function App() {
     return w>0&&n>0 ? ((w*n)/1000).toFixed(3) : "";
   },[form.moduleWattage,form.customWattage,form.numberOfModules]);
   const input = (key,placeholder="",type="text") => <input type={type} value={form[key] ?? ""} placeholder={placeholder} onChange={e=>update(key,e.target.value)} />;
+  if (activePage === "records") return <CustomerRecords records={records} onBack={() => setActivePage("documents")} onEdit={loadCustomerRecord} onDelete={deleteCustomerRecord} onToggleRts={toggleRtsPrepared} onExport={exportRecords} onOpenDocument={(doc) => { const w=window.open(); if(w){w.document.write(`<iframe src="${doc.dataUrl}" style="border:0;width:100%;height:100vh"></iframe>`);w.document.title=doc.title;} }} />;
   if (activePage === "wcr") return <WorkCompletionPage onBack={() => setActivePage("documents")} />;
   return <main className="shell">
-    <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Solar Document Studio</h1><p className="muted">Customer records · equipment details · document generation</p></div><div className="brandCredit"><span className="pill">SOLAR OPERATIONS</span><span className="builtBy">ENGINEERED BY <strong>NEXSA TECHNOLOGIES</strong></span></div><button className="secondary" onClick={()=>setActivePage("wcr")}>＋ Work Completion Report</button></header>
+    <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Solar Document Studio</h1><p className="muted">Customer records · equipment details · document generation</p></div><div className="brandCredit"><span className="pill">SOLAR OPERATIONS</span><span className="builtBy">ENGINEERED BY <strong>NEXSA TECHNOLOGIES</strong></span></div><div className="headerActions"><button className="secondary" onClick={()=>setActivePage("records")}>▤ Customer records ({records.length})</button><button className="secondary" onClick={()=>setActivePage("wcr")}>＋ Work Completion Report</button></div></header>
     <section className="intro"><div><span className="introKicker">TEJASWINI SALES&nbsp; / &nbsp;DOCUMENT WORKFLOW</span><h2>Prepare solar installation documents</h2><p>Upload the PM Surya Ghar acknowledgement, verify customer and equipment details, then generate the required documents.</p></div><div className="introMeta"><span>01&nbsp; Customer details</span><span>02&nbsp; System information</span><span>03&nbsp; PDF documents</span></div></section>
     {status && <div className="notice" role="status">{ocrBusy ? "◌ " : "ℹ "}{status}</div>}
     <section className="card">
@@ -476,7 +513,7 @@ export default function App() {
         <article className="doc"><span className="docNo">W</span><h3>Work Completion Report</h3><p>Equipment details and completion summary.</p><button onClick={()=>generatePdf("wcr")}>↓ Download PDF</button></article>
         <article className="doc"><span className="docNo">M</span><h3>Model Agreement</h3><p>Draft agreement details and signature lines.</p><button onClick={()=>generatePdf("model-agreement")}>↓ Download PDF</button></article>
       </div>
-      <div className="bottomActions"><button className="secondary" onClick={saveFields}>Export form data (JSON)</button><button className="secondary" onClick={()=>{setForm(initial);setOcrText("");setAadhaar(null);setAadhaarPreview("");setStatus("Form cleared.");}}>Clear form</button></div>
+      <div className="bottomActions"><button onClick={saveCustomerRecord}>▣ {currentRecordId ? "Update customer record" : "Save customer record"}</button><button className="secondary" onClick={()=>{setCurrentRecordId(null);setForm(initial);setOcrText("");setAadhaar(null);setAadhaarPreview("");setStatus("New customer form ready.");}}>＋ New customer</button><button className="secondary" onClick={saveFields}>Export form data (JSON)</button><button className="secondary" onClick={()=>{setForm(initial);setCurrentRecordId(null);setOcrText("");setAadhaar(null);setAadhaarPreview("");setStatus("Form cleared.");}}>Clear form</button></div>
     </section>
     {pdfPreview && <div className="pdfModalBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)closePdfPreview();}}><section className="pdfModal" role="dialog" aria-modal="true" aria-labelledby="pdf-preview-title"><header className="pdfModalHead"><div><span className="eyebrow">DOCUMENT PREVIEW</span><h2 id="pdf-preview-title">{pdfPreview.title}</h2><p>Check the pages and details before downloading.</p></div><button className="secondary" onClick={closePdfPreview} aria-label="Close preview">✕ Close</button></header><iframe className="pdfFrame" src={pdfPreview.url} title={pdfPreview.title + " PDF preview"} /><div className="pdfModalActions"><a className="downloadLink" href={pdfPreview.url} download={pdfPreview.filename}>↓ Download PDF</a><button className="secondary" onClick={closePdfPreview}>Back to form</button></div></section></div>}
     <footer><div className="footerBrand"><strong>TEJASWINI SALES</strong><span>Solar Document Studio</span></div><span className="footerCredit">Designed &amp; engineered by <strong>NEXSA TECHNOLOGIES</strong><br/>Verify all customer and equipment details before official submission.</span></footer>
