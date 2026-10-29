@@ -219,6 +219,7 @@ export default function ScannerPDF({ onBack }) {
     </section>
     <section className="card"><div className="sectionHead"><div><span className="step">03</span><h2>PDF quality and file size</h2></div></div>
       <div className="compressModes">
+        <button className={target==="auto"?"compressMode selected":"compressMode"} onClick={()=>setTarget("auto")}><strong>Auto detect</strong><span>Detect type and choose size</span><small>Model Agreement: 2 MB · WCR/Annexure: 300 KB</small></button>
         <button className={target==="299kb"?"compressMode selected":"compressMode"} onClick={()=>setTarget("299kb")}><strong>Under 300 KB</strong><span>Maximum compression</span><small>Best effort; readability may drop</small></button>
         <button className={target==="2mb"?"compressMode selected":"compressMode"} onClick={()=>setTarget("2mb")}><strong>Under 2 MB</strong><span>Balanced</span><small>Good for many official uploads</small></button>
         <button className={target==="quality"?"compressMode selected":"compressMode"} onClick={()=>setTarget("quality")}><strong>High quality</strong><span>Prioritize clarity</span><small>Output size may be larger</small></button>
