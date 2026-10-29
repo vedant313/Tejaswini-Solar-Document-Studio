@@ -23,7 +23,7 @@ async function sourcePages(file, dpi, onProgress) {
   const pages = [];
   if (isImage(file)) {
     const img = await loadImage(file), canvas = document.createElement("canvas");
-    const factor = Math.min(2, Math.max(1, dpi / 150));
+    const factor = 1; // preserve the pixels returned by the scanner/image file
     canvas.width = Math.max(1, Math.round(img.naturalWidth * factor));
     canvas.height = Math.max(1, Math.round(img.naturalHeight * factor));
     const ctx = canvas.getContext("2d", { alpha: false });
@@ -50,20 +50,29 @@ async function sourcePages(file, dpi, onProgress) {
 async function recognizePages(pages, onProgress) {
   const worker = await createWorker("eng");
   try {
-    const words = [];
+    const words = [], textParts = [];
     for (let i = 0; i < pages.length; i++) {
       onProgress("OCR text recognition: page " + (i + 1) + " of " + pages.length + "…");
       const result = await worker.recognize(pages[i].canvas);
       const c = pages[i].canvas;
+      textParts.push(result.data.text || "");
       words.push((result.data.words || []).filter(w => w.text?.trim() && w.bbox).map(w => ({
         text: w.text.trim(),
         x: w.bbox.x0 / c.width, y: w.bbox.y0 / c.height,
         w: (w.bbox.x1 - w.bbox.x0) / c.width, h: (w.bbox.y1 - w.bbox.y0) / c.height
       })));
     }
-    return words;
+    return { words, text: textParts.join("\n").toLowerCase() };
   } finally { await worker.terminate(); }
 }
+function detectDocumentType(text) {
+  const t = (text || "").toLowerCase();
+  if (/work completion report|work completion certificate|completion of work|installation completion/.test(t)) return "wcr";
+  if (/annexure\s*[-–:]?\s*i|annexure-i|dcr certificate|detailed project report|module serial number|solar photovoltaic modules/.test(t)) return "annexure";
+  if (/model agreement|agreement between|consumer.*vendor|vendor.*consumer|terms and conditions/.test(t)) return "model";
+  return "unknown";
+}
+function targetForDocument(type) { return type === "model" ? "2mb" : type === "wcr" || type === "annexure" ? "299kb" : "custom"; }
 async function makePdf(pages, ocrWords, scale, quality, searchable, onProgress) {
   let out = new jsPDF({ orientation: "p", unit: "pt", format: "a4", compress: true, putOnlyUsedFonts: true });
   for (let i = 0; i < pages.length; i++) {
@@ -95,7 +104,9 @@ export default function ScannerPDF({ onBack }) {
   const [files, setFiles] = useState([]);
   const [dpi, setDpi] = useState("200");
   const [colorMode, setColorMode] = useState("color");
-  const [target, setTarget] = useState("2mb");
+  const [target, setTarget] = useState("auto");
+  const [documentType, setDocumentType] = useState("auto");
+  const [scannerReady, setScannerReady] = useState(false);
   const [customKB, setCustomKB] = useState("1000");
   const [quality, setQuality] = useState(65);
   const [searchable, setSearchable] = useState(true);
@@ -128,25 +139,29 @@ export default function ScannerPDF({ onBack }) {
         pages.push(...next);
       }
       if (!pages.length) throw new Error("No pages were found in the selected files.");
-      const ocrWords = searchable ? await recognizePages(pages, setStatus) : [];
-      let blob, chosen = { scale: 1, quality: quality / 100 };
-      const attempts = target === "299kb"
+      const needsOcr = searchable || documentType === "auto" || target === "auto";
+      const ocrResult = needsOcr ? await recognizePages(pages, setStatus) : { words: [], text: "" };
+      const detected = documentType === "auto" ? detectDocumentType(ocrResult.text) : documentType;
+      const effectiveTarget = target === "auto" ? targetForDocument(detected) : target;
+      let blob;
+      const attempts = effectiveTarget === "299kb"
         ? [{ scale: 0.55, quality: 0.48 }, { scale: 0.42, quality: 0.36 }, { scale: 0.32, quality: 0.27 }, { scale: 0.24, quality: 0.2 }, { scale: 0.17, quality: 0.14 }]
-        : target === "2mb"
+        : effectiveTarget === "2mb"
           ? [{ scale: 1, quality: 0.68 }, { scale: 0.82, quality: 0.55 }, { scale: 0.65, quality: 0.42 }, { scale: 0.5, quality: 0.3 }, { scale: 0.38, quality: 0.22 }]
-          : target === "custom"
-          ? [{ scale: 1, quality: quality / 100 }, { scale: 0.82, quality: Math.max(0.25, quality / 100 - 0.12) }, { scale: 0.65, quality: Math.max(0.2, quality / 100 - 0.22) }, { scale: 0.5, quality: Math.max(0.16, quality / 100 - 0.32) }, { scale: 0.38, quality: 0.18 }]
-          : [{ scale: 1, quality: quality / 100 }];
+          : effectiveTarget === "custom"
+            ? [{ scale: 1, quality: quality / 100 }, { scale: 0.82, quality: Math.max(0.25, quality / 100 - 0.12) }, { scale: 0.65, quality: Math.max(0.2, quality / 100 - 0.22) }, { scale: 0.5, quality: Math.max(0.16, quality / 100 - 0.32) }, { scale: 0.38, quality: 0.18 }]
+            : [{ scale: 1, quality: quality / 100 }];
+      const limit = effectiveTarget === "299kb" ? 299 * KB : effectiveTarget === "2mb" ? 2 * MB : Number(customKB) * KB;
       for (let i = 0; i < attempts.length; i++) {
-        chosen = attempts[i];
-        blob = await makePdf(pages, ocrWords, chosen.scale, chosen.quality, searchable, setStatus);
-        const limit = target === "299kb" ? 299 * KB : target === "2mb" ? 2 * MB : Number(customKB) * KB;
-        if (target === "custom" ? blob.size <= limit : target !== "quality" && blob.size <= limit) break;
+        const chosen = attempts[i];
+        blob = await makePdf(pages, ocrResult.words, chosen.scale, chosen.quality, searchable, setStatus);
+        if (effectiveTarget === "quality" || blob.size <= limit) break;
       }
-      const name = (files.length === 1 ? safeName(files[0].name) : "canon-scan-" + new Date().toISOString().slice(0, 10)) + "-scanned.pdf";
-      const tooLarge = (target === "299kb" && blob.size > 299 * KB) || (target === "2mb" && blob.size > 2 * MB) || (target === "custom" && blob.size > Number(customKB) * KB);
-      setResult({ blob, url: URL.createObjectURL(blob), name, size: blob.size, pages: pages.length, tooLarge, searchable });
-      setStatus("Finished. " + pages.length + " page(s) included" + (tooLarge ? "; selected size target was not reached." : "."));
+      const typeName = { model: "model-agreement", wcr: "work-completion-report", annexure: "annexure", unknown: "document" }[detected] || "document";
+      const name = (files.length === 1 ? safeName(files[0].name) : "canon-scan-" + new Date().toISOString().slice(0, 10)) + "-" + typeName + ".pdf";
+      const tooLarge = effectiveTarget !== "quality" && blob.size > limit;
+      setResult({ blob, url: URL.createObjectURL(blob), name, size: blob.size, pages: pages.length, tooLarge, searchable, detected, effectiveTarget });
+      setStatus("Finished. Detected: " + (typeName.replace(/-/g, " ")) + ". Target: " + (effectiveTarget === "299kb" ? "under 300 KB" : effectiveTarget === "2mb" ? "under 2 MB" : effectiveTarget === "quality" ? "high quality" : customKB + " KB") + (tooLarge ? "; target not reached, please review quality." : "."));
     } catch (error) {
       console.error(error); setStatus("Could not finish scanning PDF: " + (error?.message || "Unknown error"));
     } finally {
@@ -155,14 +170,48 @@ export default function ScannerPDF({ onBack }) {
     }
   };
 
-  const openWindowsScanHelp = () => setStatus("On Windows, open Start → Windows Scan (or Canon IJ Scan Utility), choose your Canon scanner and set DPI/color mode, scan pages to JPG or PDF, then select those saved files here. The website cannot start a USB scan directly without a separately installed Windows helper.");
+  const connectScanner = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:8765/status", { cache: "no-store" });
+      if (!response.ok) throw new Error("Bridge response " + response.status);
+      const data = await response.json();
+      setScannerReady(Boolean(data.ready));
+      setStatus(data.ready ? "Canon scanner bridge is connected. You can scan directly from this website." : "Scanner bridge is not ready.");
+    } catch {
+      setScannerReady(false);
+      setStatus("Scanner helper is not running. Start TejaswiniScannerBridge.exe on this Windows PC, then click Connect again.");
+    }
+  };
+  const scanFromWebsite = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      setStatus("Sending scan request to the local Canon/WIA scanner…");
+      const response = await fetch("http://127.0.0.1:8765/scan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dpi: Number(dpi), colorMode })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Scanner request failed");
+      const blob = await (await fetch(data.dataUrl)).blob();
+      const file = new File([blob], data.fileName || ("canon-scan-" + Date.now() + ".jpg"), { type: "image/jpeg", lastModified: Date.now() });
+      setFiles(prev => [...prev, file]);
+      setResult(null);
+      setStatus("Scan received in the website. Scan the next page if needed, then choose document type/size and create PDF.");
+      setScannerReady(true);
+    } catch (error) {
+      setScannerReady(false);
+      setStatus("Could not scan directly: " + (error?.message || "Start the Windows scanner helper and confirm WIA support."));
+    } finally { setBusy(false); }
+  };
+  const openWindowsScanHelp = () => setStatus("For direct website scanning, the local Tejaswini Windows Scanner Bridge must be running and your Canon driver must support WIA. The bridge source and setup notes are in the project's windows-scanner-bridge folder.");
   return <main className="shell">
     <header className="top"><div className="mark">TS</div><div><p className="eyebrow">TEJASWINI SALES</p><h1>Scanner &amp; PDF</h1><p className="muted">Prepare scanned documents, optimize file size and add searchable OCR text.</p></div><div className="headerActions"><button className="secondary" onClick={onBack}>← Back to Document Studio</button></div></header>
     <section className="intro"><div><span className="introKicker">CANON USB SCANNER WORKFLOW</span><h2>Scan, optimize and save</h2><p>Scan with Canon’s Windows software, then combine pages, add OCR text and target the PDF size required for your solar paperwork.</p></div><div className="introMeta"><span>PDF or image input</span><span>OCR: English</span><span>Processed locally in browser</span></div></section>
-    <section className="card"><div className="sectionHead"><div><span className="step">01</span><h2>Scan from your Canon printer</h2></div></div>
-      <div className="scannerGuide"><div><strong>Recommended scan settings</strong><p>Text documents: 200 DPI, Grayscale or Black &amp; White. Photos or faint documents: 300 DPI, Color.</p><small>In Windows, open <b>Windows Scan</b> or <b>Canon IJ Scan Utility</b>, choose the Canon scanner, then save scanned pages as PDF or JPG. Save multiple pages as separate images or one PDF.</small></div><button className="secondary" onClick={openWindowsScanHelp}>How to open scanner software</button></div>
-      <div className="grid two scannerSettings"><label className="field"><span>Recommended DPI (set this in Canon software)</span><select value={dpi} onChange={e=>setDpi(e.target.value)}><option value="150">150 DPI — smaller files</option><option value="200">200 DPI — text documents</option><option value="300">300 DPI — clearer detail</option></select></label><label className="field"><span>Suggested scan color mode</span><select value={colorMode} onChange={e=>setColorMode(e.target.value)}><option value="color">Color</option><option value="grayscale">Grayscale</option><option value="bw">Black &amp; White</option></select></label></div>
-      <p className="muted">These are guidance settings only; choose the same DPI and color mode in the Canon scanning app before scanning. This webpage cannot directly control a USB scanner by itself.</p>
+    <section className="card"><div className="sectionHead"><div><span className="step">01</span><h2>Scan directly from this website</h2></div><span className={scannerReady ? "resultSuccess" : "resultWarning"}>{scannerReady ? "Scanner connected" : "Scanner not connected"}</span></div>
+      <div className="scannerGuide"><div><strong>Canon USB scanner connection</strong><p>Connect your Canon printer by USB, start the Windows Scanner Bridge on this PC, then connect here.</p><small>Direct scanning requires the small Windows helper and a Canon driver that supports WIA. This helper runs locally; the scanned pages are sent to this browser, not to our server.</small></div><div className="scannerButtons"><button className="secondary" onClick={connectScanner} disabled={busy}>⟳ Connect scanner</button><button onClick={scanFromWebsite} disabled={busy}>{busy ? "Working…" : "▣ Scan page now"}</button></div></div>
+      <div className="grid two scannerSettings"><label className="field"><span>Scan resolution</span><select value={dpi} onChange={e=>setDpi(e.target.value)}><option value="150">150 DPI — smaller files</option><option value="200">200 DPI — recommended for text</option><option value="300">300 DPI — clearer detail</option></select></label><label className="field"><span>Scan color mode</span><select value={colorMode} onChange={e=>setColorMode(e.target.value)}><option value="color">Color</option><option value="grayscale">Grayscale</option><option value="bw">Black &amp; White</option></select></label></div>
+      <p className="muted">For multi-page documents, click Scan page now for each page. The scanned pages automatically appear in the file list below. Some Canon drivers may not support WIA; if so, the helper will need adapting for that scanner.</p>
     </section>
     <section className="card"><div className="sectionHead"><div><span className="step">02</span><h2>Import scanned pages</h2></div><span className="muted">{files.length} file(s)</span></div>
       <label className="upload" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();addFiles(e.dataTransfer.files);}}><input ref={inputRef} type="file" multiple accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/bmp,image/tiff" onChange={e=>addFiles(e.target.files)}/><span className="uploadIcon">↑</span><strong>Select scanned PDFs or images</strong><small>PDF, JPG, PNG, WebP, BMP or TIFF · multiple files supported</small></label>
@@ -171,18 +220,19 @@ export default function ScannerPDF({ onBack }) {
     </section>
     <section className="card"><div className="sectionHead"><div><span className="step">03</span><h2>PDF quality and file size</h2></div></div>
       <div className="compressModes">
-        <button className={target==="299kb"?"compressMode selected":"compressMode"} onClick={()=>setTarget("299kb")}><strong>Under 299 KB</strong><span>Maximum compression</span><small>Best effort; readability may drop</small></button>
+        <button className={target==="auto"?"compressMode selected":"compressMode"} onClick={()=>setTarget("auto")}><strong>Auto detect</strong><span>Detect type and choose size</span><small>Model Agreement: 2 MB · WCR/Annexure: 300 KB</small></button>
+        <button className={target==="299kb"?"compressMode selected":"compressMode"} onClick={()=>setTarget("299kb")}><strong>Under 300 KB</strong><span>Maximum compression</span><small>Best effort; readability may drop</small></button>
         <button className={target==="2mb"?"compressMode selected":"compressMode"} onClick={()=>setTarget("2mb")}><strong>Under 2 MB</strong><span>Balanced</span><small>Good for many official uploads</small></button>
         <button className={target==="quality"?"compressMode selected":"compressMode"} onClick={()=>setTarget("quality")}><strong>High quality</strong><span>Prioritize clarity</span><small>Output size may be larger</small></button>
       </div>
       <div className="grid two scannerSettings"><label className="field"><span>Image quality: {quality}% (used for High quality)</span><input type="range" min="35" max="95" step="5" value={quality} onChange={e=>setQuality(Number(e.target.value))}/></label><label className="field"><span>Custom target (KB)</span><input type="number" min="100" max="20000" value={customKB} onChange={e=>{setCustomKB(e.target.value);setTarget("custom");}}/><small>Enter a limit like 500 KB or 1000 KB.</small></label></div>
-      <label className="scannerCheckbox"><input type="checkbox" checked={searchable} onChange={e=>setSearchable(e.target.checked)}/><span><strong>Make PDF searchable (OCR)</strong><small>Recognizes English text and adds a searchable text layer. OCR can misread faint or handwritten content; always verify the original.</small></span></label>
-      <div className="notice">Important: strong compression can reduce readability. The 299 KB and 2 MB targets are best-effort, not guaranteed. Always check the PDF before official submission. Original files are not modified or uploaded to a server.</div>
+      <label className="field scannerDocType"><span>Document type (auto-detect or choose manually)</span><select value={documentType} onChange={e=>setDocumentType(e.target.value)}><option value="auto">Automatically detect using OCR</option><option value="model">Model Agreement — target under 2 MB</option><option value="wcr">Work Completion Report — target under 300 KB</option><option value="annexure">Annexure / DCR — target under 300 KB</option><option value="unknown">Other document — custom size</option></select><small>OCR can misread low-quality scans. Choose the document type manually if detection is uncertain.</small></label>\n      <label className="scannerCheckbox"><input type="checkbox" checked={searchable} onChange={e=>setSearchable(e.target.checked)}/><span><strong>Make PDF searchable (OCR)</strong><small>Recognizes English text and adds a searchable text layer. OCR can misread faint or handwritten content; always verify the original.</small></span></label>
+      <div className="notice">Important: strong compression can reduce readability. The 300 KB and 2 MB targets are best-effort, not guaranteed. Always check the PDF before official submission. Original files are not modified or uploaded to a server.</div>
       <div className="bottomActions"><button disabled={!files.length||busy} onClick={process}>{busy?"Processing…":"⚡ Create PDF"+(searchable?" + OCR":"")}</button></div>
       {status && <div className="notice" role="status">{busy?"◌ ":"ℹ "}{status}</div>}
     </section>
     {result && <section className="card"><div className="sectionHead"><div><span className="step">04</span><h2>PDF ready</h2></div><span className={result.tooLarge?"resultWarning":"resultSuccess"}>{result.tooLarge?"Target not reached":"Ready to download"}</span></div>
-      <div className="compressionStats"><div><span>PDF size</span><strong>{prettySize(result.size)}</strong></div><div><span>Pages</span><strong>{result.pages}</strong></div><div><span>OCR text layer</span><strong>{result.searchable?"Enabled":"Off"}</strong></div></div>
+      <div className="compressionStats"><div><span>PDF size</span><strong>{prettySize(result.size)}</strong></div><div><span>Pages</span><strong>{result.pages}</strong></div><div><span>OCR text layer</span><strong>{result.searchable?"Enabled":"Off"}</strong></div><div><span>Detected type</span><strong>{result.detected || "—"}</strong></div><div><span>Target</span><strong>{result.effectiveTarget === "299kb" ? "300 KB" : result.effectiveTarget === "2mb" ? "2 MB" : result.effectiveTarget === "quality" ? "High quality" : customKB + " KB"}</strong></div></div>
       {result.tooLarge && <p className="muted">The selected size target could not be reached without further quality loss. Try fewer pages or a less detailed scan.</p>}
       <div className="bottomActions"><a className="downloadLink" href={result.url} download={result.name}>↓ Download {result.name}</a><a className="downloadLink" href={result.url} target="_blank" rel="noreferrer">Preview PDF</a></div>
     </section>}
