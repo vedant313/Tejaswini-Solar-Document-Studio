@@ -425,7 +425,7 @@ export default function App() {
         moduleWattage: clean(form.moduleWattage === "other" ? form.customWattage : form.moduleWattage),
         moduleSerialNumbers: [],
         inverterModel: clean(form.inverterModel),
-        inverterRating: clean(form.inverterCapacity),
+        inverterRating: clean(form.inverterCapacity === "other" ? form.customInverterCapacity : form.inverterCapacity),
         chargeControllerType: "",
         earthingCount: "3",
         lightningArrester: "",
